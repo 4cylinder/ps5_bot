@@ -7,6 +7,9 @@
 
 > Autonomously buy NVIDIA RTX 30 Series GPUs from Best Buy. Fuck scalpers.
 
+## Demo
+![](bestbuysniperdemo.gif)
+
 ## Install
 `npm install`
 
