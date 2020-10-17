@@ -8,15 +8,9 @@
 > Autonomously buy NVIDIA RTX 30 Series GPUs from Best Buy. Fuck scalpers.
 
 ## Install
-### Windows
 `npm install`
-### Mac
--todo
-### Linux (Ubuntu)
--todo
 
 ## Usage
-### Windows
 <b>NOTE: By default the auto-checkout is disabled so there is no accidental purchasing. To enable auto-checkout uncomment the code found on `line: 368-370` in the `bestbuy.ts` file located in `src/pages`.</b>
 
 1. FIll in all the data in `config/prod/` and remove the string `template_` from the file extenstions
@@ -32,10 +26,3 @@ You must have discord notifcation set in order for the bot to work. If you do no
 4. Stop the bot at any time with `npm run stop`
 
 Note: the bot will no longer run once a purchase has been made. To be able to use the bot again, delete `purchase.json` from the main folder.
-
-### Mac
--todo
-
-### Linux (Ubuntu)
--todo
-
