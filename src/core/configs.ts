@@ -12,8 +12,8 @@ export interface CustomerInformation {
   firstName: string;
   lastName: string;
   phone: string;
-  state: string;
-  zipcode: string;
+  province: string;
+  postalCode: string;
 }
 
 export interface PaymentInformation {
@@ -25,8 +25,8 @@ export interface PaymentInformation {
   city: string;
   firstName: string;
   lastName: string;
-  state: string;
-  zipcode: string;
+  province: string;
+  postalCode: string;
 }
 
 export const getTasks = () => {
