@@ -111,6 +111,7 @@ export class BestBuy {
     const page = await this.getPage();
     const [context] = this.browser.contexts();
     const cookies = await context.cookies();
+    logger.info(`${JSON.stringify(cookies)}`);
     const sensorCookie = find(cookies, { name: '_abck' })?.value;
     const sensorValidationRegex = /~0~/g;
 
