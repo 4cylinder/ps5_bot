@@ -127,7 +127,7 @@ export class BestBuy {
 
     if (!(await this.isInStock())) throw new Error('Product not in stock, aborting attempt');
 
-    await page.focus('.pricingContainer_9GyCd .addToCartButton:not([disabled])');
+    await page.focus('.addToCartContainer_2uzan .addToCartButton:not([disabled])');
 
     const productInStockScreenshotPath = resolve(`screenshots/${Date.now()}_product-in-stock.png`);
 
@@ -142,7 +142,7 @@ export class BestBuy {
 
     logger.info(`"${productName}" in stock, adding to cart...`);
 
-    await page.click('.pricingContainer_9GyCd .addToCartButton:not([disabled])');
+    await page.click('.addToCartContainer_2uzan .addToCartButton:not([disabled])');
 
     const result = await this.hasItemBeenAddedToCart();
 
@@ -164,7 +164,7 @@ export class BestBuy {
 
   public async isInStock() {
     const page = await this.getPage();
-    const enabledButton = await page.$('.pricingContainer_9GyCd .addToCartButton:not([disabled])');
+    const enabledButton = await page.$('.addToCartContainer_2uzan .addToCartButton:not([disabled])');
 
     if (enabledButton) return true;
 
