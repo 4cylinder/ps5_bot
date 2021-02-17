@@ -111,7 +111,7 @@ export class BestBuy {
     const page = await this.getPage();
     const [context] = this.browser.contexts();
     const cookies = await context.cookies();
-    logger.info(`${JSON.stringify(cookies)}`);
+
     const sensorCookie = find(cookies, { name: '_abck' })?.value;
     const sensorValidationRegex = /~0~/g;
 
@@ -208,8 +208,14 @@ export class BestBuy {
 
     await this.clickCheckoutButton();
 
+    if (await this.isQueueActive()) {
+      logger.info('Placed in queue, waiting for checkout button again');
+      await page.waitForSelector('#buttonConfirmRedirect', { timeout: 300000 });
+      await page.click('#buttonConfirmRedirect');
+    }
+
     try {
-      await page.waitForSelector('.guest-context-container .guest-continue-link', { timeout: 10000 });
+      await page.waitForSelector('.guest-context-container .guest-continue-link', { timeout: 300000 });
 
       logger.info('Checkout successful, starting order placement');
     } catch (error) {
@@ -217,11 +223,18 @@ export class BestBuy {
       logger.info('Refreshing and trying to checkout again');
 
       await Promise.all([
-        sendDiscordMessage({ message: `Checkout did not went through, trying again`, image: startingCheckoutScreenshotPath }),
+        sendDiscordMessage({ message: `Checkout did not go through, trying again`, image: startingCheckoutScreenshotPath }),
       ]);
 
       await this.checkout(true);
     }
+  }
+
+  private async isQueueActive() {
+    const page = await this.getPage();
+    const element = await page.$('#lbHeaderH2');
+    const elementTextContent = await element?.textContent();
+    return elementTextContent ? elementTextContent.trim().toLowerCase() === 'thanks for waiting to check out.' : false;
   }
 
   private async isCartEmpty() {
@@ -260,7 +273,7 @@ export class BestBuy {
 
     logger.info('Trying to checkout...');
 
-    const checkoutLink = await page.$eval('.checkoutButton_2PqYr a', (anchor) => anchor.getAttribute('href'));
+    const checkoutLink = await page.$eval('.continueToCheckout_3Dgpe', (anchor) => anchor.getAttribute('href'));
 
     await page.goto(checkoutLink || '');
   }
