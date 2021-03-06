@@ -5,7 +5,11 @@
   <img src="https://img.shields.io/badge/node-%3E%3D9.3.0-blue.svg" />
 </p>
 
-> Autonomously buy NVIDIA RTX 30 Series GPUs from Best Buy
+> Autonomously buy products from Best Buy Canada
+
+## Important
+
+Credit goes to https://github.com/zeldridge/best-buy-sniper for the original framework.
 
 ## Demo
 ![](bestbuysniperdemo.gif)
