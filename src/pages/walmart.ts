@@ -162,7 +162,6 @@ export class WalMart extends Retailer {
 
     await checkAlreadyPurchased();
 
-    // TODO: Figure out how to extract the displayed order total
     await this.validateOrderTotal(customerInfo.budget);
 
     /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
