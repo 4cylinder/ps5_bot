@@ -11,7 +11,7 @@
 * This project is derived from https://github.com/zeldridge/best-buy-sniper.
 * I do not own the basic idea of using PM2 and Playwright to auto-buy products from these sites. *All credit goes to Zeldrige!*
 * The modifications to support multiple retailers are entirely my own.
-* I assume *no responsibility* for any personal catastrophies that may result from the use of this bot. Read the instructions carefully if you don't want a nasty surprise on your credit card bill.
+* *I assume no responsibility* for any personal catastrophies that may result from the use of this bot. Read the instructions carefully if you don't want a nasty surprise on your credit card bill.
 
 ## Install
 `npm install`
@@ -24,6 +24,7 @@ To enable auto-completion, uncomment the lines underneath the warning comment in
 ### NOTE 2
 <b>If you're experimenting and don't want to be inundated with Discord messages, comment out the line in `src/pages/retailer.ts` that makes a call to the function `sendDiscordMessage`.</b>
 
+### Running the bot
 1. Fill in all the data in the `config` directory and remove the string `template_` from the file extensions
     - Best Buy and Walmart use a Canada Post API to resolve addresses. I recommend manually going through the order process just once, and copying the exact format that the API uses when it resolves your address.
     - For example, if your address is `123 Smith Drive`, and the Canada Post API resolves it to `123 Smith Dr`, then you should write `123 Smith Dr` as your address in `customer.json`
