@@ -27,7 +27,7 @@
     "lodash": "^4.17.20",
     "messaging-api-telegram": "^1.0.1",
     "playwright": "^1.4.2",
-    "pm2": "^4.5.0",
+    "pm2": "^4.5.5",
     "tsconfig-paths": "^3.9.0",
     "winston": "^3.3.3"
   }
