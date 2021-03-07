@@ -2,25 +2,36 @@ import { getNotificationsInformation } from '@core/configs';
 import { Webhook, MessageBuilder } from 'discord-webhook-node';
 
 const config = getNotificationsInformation().discord;
-const hook = new Webhook(config.url);
+const hooks: { [key: string]: Webhook } = {};
+for (let key in config) {
+  hooks[key] = new Webhook(config[key])
+}
 
 interface MessageProperties {
   color?: number;
   image?: string;
+  key?: string;
   message: string;
   title?: string;
 }
 
-export const sendMessage = async ({ color, image, message, title }: MessageProperties) => {
-  const embed = new MessageBuilder().setDescription(message);
+export const sendMessage = async (props: MessageProperties) => {
+  const embed = new MessageBuilder().setDescription(props.message);
 
   embed.setText('@here');
 
-  if (title) embed.setTitle(title);
+  if (props.title){
+    embed.setTitle(props.title);
+  }
 
-  if (color) embed.setColor(color);
+  if (props.color) {
+    embed.setColor(props.color);
+  }
 
-  await hook.send(embed);
+  const retailer = props.key || 'bestbuy';
+  await hooks[retailer].send(embed);
 
-  if (image) await hook.sendFile(image);
+  if (props.image) {
+    await hooks[retailer].sendFile(props.image);
+  } 
 };

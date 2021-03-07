@@ -1,7 +1,7 @@
-import productionTasks from '@config/prod/tasks.json';
-import productionCustomerInformation from '@config/prod/customer.json';
-import productionPaymentInformation from '@config/prod/payment.json';
-import productionNotificationsInformation from '@config/prod/notifications.json';
+import Tasks from '@config/tasks.json';
+import customerInformation from '@config/customer.json';
+import paymentInformation from '@config/payment.json';
+import notificationsInformation from '@config/notifications.json';
 
 export interface CustomerInformation {
   address: string;
@@ -30,17 +30,17 @@ export interface PaymentInformation {
 }
 
 export const getTasks = () => {
-  return productionTasks;
+  return Tasks;
 };
 
 export const getCustomerInformation = (): CustomerInformation => {
-  return productionCustomerInformation;
+  return customerInformation;
 };
 
 export const getPaymentInformation = (): PaymentInformation => {
-  return productionPaymentInformation;
+  return paymentInformation;
 };
 
 export const getNotificationsInformation = (): any => {
-  return productionNotificationsInformation;
+  return notificationsInformation;
 };

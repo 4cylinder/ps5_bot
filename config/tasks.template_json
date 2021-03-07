@@ -1,0 +1,27 @@
+[
+  {
+    "stores": {
+      "bestbuy": {
+        "products": [
+          {
+            "searchText": "PlayStation 5",
+            "sku": "14962185",
+            "model": "3005720",
+            "productName": "PlayStation 5 Console - Online Only",
+            "productPage": "/product/14962185"
+          }
+        ]
+      },
+      "walmart": {
+        "products": [
+          {
+            "searchText": "PlayStation 5",
+            "productId": "6000202198562",
+            "productName": "PlayStation®5 console",
+            "productPage": "/ip/6000202198562"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -1,59 +1,23 @@
-import { getBrowser } from '@driver/index';
-import { Browser, BrowserContext, Page } from 'playwright';
-import { find, get } from 'lodash';
+import { find } from 'lodash';
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
-import { resolve } from 'path';
 import { sendMessage as sendDiscordMessage } from '@core/notifications/discord';
-import { existsSync, writeFileSync } from 'fs';
+import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
-interface ProductInformation {
-  searchText?: string;
+interface BestBuyProduct extends Product {
   sku: string;
   model: string;
   productName: string;
-  productPage: string;
 }
-
-export const wait = (ms: number) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-};
 
 const baseUrl = 'https://www.bestbuy.ca/en-ca';
 const addToCartBtnSelector = '.productActionWrapperNonMobile_10B89 .addToCartButton:not([disabled])';
 const productDetailsSelector = '.modelInformation_1ZG9l';
 
-export class BestBuy {
-  private browser: Browser;
-
-  private products: ProductInformation[];
-
-  private page?: Page;
-
-  private context?: BrowserContext;
-
-  constructor({ products }: { products: any[] }) {
-    this.browser = getBrowser();
-    this.products = products;
-  }
-
-  async open(): Promise<Page> {
-    this.context = await this.browser.newContext({
-      permissions: [],
-    });
-    this.page = await this.context.newPage();
-
-    return this.page;
-  }
-
-  async close(): Promise<void> {  
-    await this.page?.close();
-    await this.context?.close();
-
-    this.page = undefined;
-    this.context = undefined;
+export class BestBuy extends Retailer {
+  constructor({ products }: { products: BestBuyProduct[] }) {
+    super({ products });
+    this.retailerName = 'bestbuy';
   }
 
   public async purchaseProduct() {
@@ -61,27 +25,27 @@ export class BestBuy {
 
     await page.goto(baseUrl);
 
-    for (const product of this.products) {
+    for (const product of this.products as BestBuyProduct[]) {
       try {
         await this.goToProductPage(product);
         await this.validateProductMatch(product);
         await this.addToCart(product);
         await this.checkout();
-        await this.continueAsGuest();
-        await this.submitGuestOrder();
+        await this.createGuestOrder();
 
         return true;
       } catch (error) {
         logger.error(error);
 
-        if (error.message === 'Browser is considered a bot, aborting attempt') throw error;
+        if (error.message === this.antiBotMsg) {
+          throw error;
+        }
       }
     }
-
     return false;
   }
 
-  private async goToProductPage(product: ProductInformation): Promise<void> {
+  async goToProductPage(product: BestBuyProduct) {
     const { productPage } = product;
     const page = await this.getPage();
 
@@ -94,21 +58,25 @@ export class BestBuy {
     logger.info(`Navigation completed`);
   }
 
-  private async validateProductMatch(product: ProductInformation) {
+  async validateProductMatch(product: BestBuyProduct) {
     const { sku: expectedSKU } = product;
     const page = await this.getPage();
 
     logger.info(`Validating that page is for ${product.productName}`);
 
-    const skuValue = await page.$eval(`${productDetailsSelector}:nth-of-type(2) span`, (element) => element.textContent);
+    const skuValue = await page.$eval(
+      `${productDetailsSelector}:nth-of-type(2) span`,
+      (element) => element.textContent
+    );
 
-    if (expectedSKU !== skuValue!.trim())
+    if (expectedSKU !== skuValue!.trim()) {
       throw new Error(`Product sku doesn't match. Expected: ${expectedSKU}. Actual: ${skuValue}`);
+    }
 
     logger.info(`Page is correct`);
   }
 
-  public async antiAntiBot() {
+  private async antiAntiBot() {
     const [context] = this.browser.contexts();
     const cookies = await context.cookies();
 
@@ -117,14 +85,14 @@ export class BestBuy {
 
     if (sensorCookie && !sensorValidationRegex.test(sensorCookie)) {
       await Promise.all([
-        sendDiscordMessage({ message: `Browser is considered a bot, aborting attempt` }),
+        sendDiscordMessage({ message: this.antiBotMsg}),
       ]);
 
-      throw new Error('Browser is considered a bot, aborting attempt');
+      throw new Error(this.antiBotMsg);
     }
   }
 
-  public async addToCart(product: ProductInformation) {
+  async addToCart(product: BestBuyProduct) {
     const { productName } = product;
     const page = await this.getPage();
     
@@ -142,7 +110,7 @@ export class BestBuy {
 
     await page.click(addToCartBtnSelector);
 
-    const result = await this.hasItemBeenAddedToCart();
+    const result = await this.isInCart();
 
     if (!result){
       throw new Error(`Could not add ${productName} to cart. Aborting.`);
@@ -153,24 +121,30 @@ export class BestBuy {
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`)
   }
 
-  public async isInStock() {
+  async isInStock() {
     const page = await this.getPage();
     const isButtonEnabled = await page.$(addToCartBtnSelector);
 
-    return isButtonEnabled || false;
+    if (isButtonEnabled) {
+      return true;
+    }
+    return false;
   }
 
-  private async hasItemBeenAddedToCart() {
+  async isInCart() {
     const page = await this.getPage();
 
     const completedSuccessfuly = await page.waitForResponse(
       (response: any) => response.url() === 'https://www.bestbuy.ca/api/basket/v2/baskets' && response.status() === 200
     );
 
-    return completedSuccessfuly;
+    if (completedSuccessfuly) {
+      return true;
+    }
+    return false;
   }
 
-  private async checkout(retrying: boolean = false) {
+  async checkout(retrying: boolean = false) {
     const page = await this.getPage();
     const customerInformation = getCustomerInformation();
 
@@ -186,12 +160,15 @@ export class BestBuy {
 
     await this.sendScreenshot(page, `${Date.now()}_starting-checkout.png`, 'Attempting checkout.');
 
-    await this.clickCheckoutButton();
-
-    if (await this.isQueueActive()) {
-      logger.info('Placed in queue, waiting for checkout button again');
-      await page.waitForSelector('#buttonConfirmRedirect', { timeout: 300000 });
-      await page.click('#buttonConfirmRedirect');
+    try {
+      await this.clickCheckoutButton();
+    } catch(err) {
+      // TODO: Capture redirect to queue page
+      if (await this.isQueueActive()) {
+        logger.info('Placed in queue, waiting for checkout button again');
+        await page.waitForSelector('#buttonConfirmRedirect', { timeout: 300000 });
+        await page.click('#buttonConfirmRedirect');
+      }
     }
 
     try {
@@ -208,14 +185,14 @@ export class BestBuy {
     }
   }
 
-  private async isQueueActive() {
+  async isQueueActive() {
     const page = await this.getPage();
     const element = await page.$('#lbHeaderH2');
     const elementTextContent = await element?.textContent();
     return elementTextContent ? elementTextContent.trim().toLowerCase() === 'thanks for waiting to check out.' : false;
   }
 
-  private async isCartEmpty() {
+  async isCartEmpty() {
     const page = await this.getPage();
 
     const element = await page.$('.fluid-large-view__title');
@@ -224,7 +201,7 @@ export class BestBuy {
     return elementTextContent ? elementTextContent.trim().toLowerCase() === 'your cart is empty' : false;
   }
 
-  private async changePostalCode(postalCode: string) {
+  async changePostalCode(postalCode: string) {
     const page = await this.getPage();
 
     logger.info('Waiting for postal code updater to become available.');
@@ -241,10 +218,9 @@ export class BestBuy {
     await page.click('.zipCodeButton__8xwJ');
 
     logger.info('Updated postal code');
-
   }
 
-  private async createGuestOrder() {
+  async createGuestOrder() {
     const page = await this.getPage();
     const customerInformation = getCustomerInformation();
     const paymentInformation = getPaymentInformation();
@@ -262,9 +238,26 @@ export class BestBuy {
 
     await this.enterPaymentInfo(paymentInformation);
     await this.sendScreenshot(page, `${Date.now()}_second-information-page-completed.png`, 'Filled out payment info.');
+
+    await page.click('.continue-to-review');
+
+    await this.validateOrderTotal( customerInformation.budget);
+
+    logger.info('Placing order...');
+    await this.sendScreenshot(page, `${Date.now()}_placing-order.png`, 'Placing order...');
+
+    await checkAlreadyPurchased();
+
+    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
+    // await this.placeOrder(page, '.order-now');
+    // await wait(3000);
+    // await this.markAsPurchased();
+    // await wait(3000);
+    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
+    // await wait(14000);
   }
 
-  private async clickCheckoutButton() {
+  async clickCheckoutButton() {
     const page = await this.getPage();
 
     logger.info('Trying to checkout...');
@@ -274,72 +267,8 @@ export class BestBuy {
     await page.goto(checkoutLink || '');
   }
 
-  private async continueAsGuest() {
+  async validateOrderTotal(budget: number) {
     const page = await this.getPage();
-
-    logger.info('Continuing as guest');
-    
-    await page.click('.guest-continue-link');
-
-    await page.waitForSelector('.checkoutPageContainer .form');
-  }
-
-  private async submitGuestOrder() {
-    const page = await this.getPage();
-    const customerInformation = getCustomerInformation();
-    const paymentInformation = getPaymentInformation();
-
-    logger.info('Started order information completion');
-
-    await this.enterShippingInfo(customerInformation);
-
-    await page.screenshot({
-      path: resolve(`screenshots/${Date.now()}_first-information-page-completed.png`),
-      type: 'png',
-      fullPage: true
-    });
-
-    logger.info('Continuing to payment screen...');
-
-    await page.click('.continue-to-payment');
-
-    await this.enterPaymentInfo(paymentInformation);
-
-    await page.screenshot({
-      path: resolve(`screenshots/${Date.now()}_second-information-page-completed.png`),
-      type: 'png',
-      fullPage: true
-    });
-
-    await page.click('.continue-to-review');
-
-    await this.validateOrderTotal(page, customerInformation.budget);
-
-    logger.info('Placing order...');
-    await this.sendScreenshot(page, `${Date.now()}_placing-order.png`, 'Placing order...');
-
-    if (existsSync('purchase.json')) {
-      logger.warn('Purchase already completed, ending process');
-
-      process.exit(2);
-    }
-
-    // *** UNCOMMENT THIS SECTION TO ENABLE AUTO-CHECKOUT ***
-
-    // await this.placeOrder(page);
-    // await wait(3000);
-    // logger.info('Order placed!');
-    // if (!existsSync('purchase.json')) writeFileSync('purchase.json', '{}');
-    // await wait(3000);
-    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
-    // await wait(14000);
-  }
-
-  private async placeOrder(page: Page) {
-    await page.click('.order-now', {timeout: 120000, force: true});
-  }
-
-  private async validateOrderTotal(page: Page, budget: number) {
     logger.info('Performing last validation before placing order...');
     const totalContainer = await page.$('.total td');
     const totalContainerTextContent = await totalContainer?.textContent();
@@ -349,7 +278,7 @@ export class BestBuy {
       throw new Error(`Total amount of ${parsedTotal} does not seems right, aborting`);
   }
 
-  private async enterShippingInfo(customerInformation: CustomerInformation) {
+  async enterShippingInfo(customerInformation: CustomerInformation) {
     const page = await this.getPage();
 
     logger.info('Filling contact information...');
@@ -359,13 +288,15 @@ export class BestBuy {
     logger.info('Filling shipping information...');
     await this.fillTextInput(page, '#firstName', customerInformation.firstName);
     await this.fillTextInput(page, '#lastName', customerInformation.lastName);
-    await this.fillTextInput(page, '#addressLine', customerInformation.address);
+    // Add a space in case the Canada Post address-filler lags
+    await page.type('#addressLine', customerInformation.address + ' ');
+    await page.keyboard.press('\n');
     await this.fillTextInput(page, '#city', customerInformation.city);
     await page.selectOption('#regionCode', customerInformation.province);
     await this.fillTextInput(page, '#postalCode', customerInformation.postalCode);
   }
 
-  private async enterPaymentInfo(paymentInformation: PaymentInformation) {
+  async enterPaymentInfo(paymentInformation: PaymentInformation) {
     const page = await this.getPage();
     
     logger.info('Filling payment information...');
@@ -381,28 +312,5 @@ export class BestBuy {
     await this.fillTextInput(page, '#cvv', paymentInformation.cvv);
 
     logger.info('Payment information completed');
-  }
-
-  private async fillTextInput(page: Page, selector: string, value: string) {
-    await page.waitForSelector(selector);
-    await page.click(selector);
-    await page.focus(selector);
-    await page.type(selector, value);
-  }
-
-  private async sendScreenshot(page: Page, path: string, message: string, fullPage: boolean = false) {
-    const screenshotPath = resolve(`screenshots/${path}`);
-    await page.screenshot({
-      path: screenshotPath,
-      type: 'png',
-      fullPage: true
-    });
-    await Promise.all([
-      sendDiscordMessage({ message: message, image: screenshotPath }),
-    ]);
-  }
-
-  private async getPage() {
-    return this.page!;
   }
 }

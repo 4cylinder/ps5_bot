@@ -9,7 +9,6 @@
     "prestart": "npm run build",
     "start:dev": "nodemon",
     "start": "pm2 start dist/src/main.js --node-args=\"-r ./tsconfig-paths-bootstrap.js\" && pm2 monit",
-    "start-bestbuy": "pm2 start dist/src/main.js --node-args=\"-r ./tsconfig-paths-bootstrap.js\" && pm2 monit",
     "stop": "pm2 delete main"
   },
   "author": "",

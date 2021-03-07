@@ -1,34 +1,36 @@
 import { createBrowser, getBrowser } from '@driver/index';
-import { BestBuy, wait } from '@pages/bestbuy';
+import { wait, checkAlreadyPurchased, Retailer } from '@pages/retailer';
+import { BestBuy } from '@pages/bestbuy';
+import { WalMart } from '@pages/walmart';
 import { getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
 import { sendMessage as sendDiscordMessage } from '@core/notifications/discord';
-import { existsSync, writeFileSync } from 'fs';
 import pm2 from 'pm2';
 
 const main = async () => {
   const { stores } = getTasks()[0];
-  const { bestbuy: bestbuyConfig } = stores;
+  const bestbuyConfig = stores.bestbuy;
+  const walmartConfig = stores.walmart;
 
-  if (existsSync('purchase.json')) {
-    logger.warn('Purchase completed, sleeping for 2 days');
+  checkAlreadyPurchased();
 
-    await wait(60000 * 60 * 48);
+  const retailers: Retailer[] = [
+    new BestBuy({ products: bestbuyConfig.products }),
+    new WalMart({ products: walmartConfig.products }),
+  ];
 
-    process.exit(2);
-  }
-
-  const bestbuy = new BestBuy({ products: bestbuyConfig.products });
   let purchaseCompleted = false;
-
-  await bestbuy.open();
 
   logger.info('Starting purchase attempts');
 
   try {
     do {
-      purchaseCompleted = await bestbuy.purchaseProduct();
+      for (let retailer of retailers) {
+        await retailer.open();
+        const retailerStatus = await retailer.purchaseProduct();
+        purchaseCompleted = purchaseCompleted || retailerStatus;
+      }
   
       if (!purchaseCompleted) {
         const waitTime = random(60000, 300000);
@@ -40,20 +42,20 @@ const main = async () => {
     } while (!purchaseCompleted);
   
     logger.info('Shutting down in 1 minute');
-  
-    await Promise.all([
-      await sendDiscordMessage({ message: 'Shutting down in 1 minute' }),
-    ]);
+
+    for (let retailerName in stores) {
+      await Promise.all([
+        await sendDiscordMessage({ key: retailerName, message: 'Shutting down in 1 minute' }),
+      ]);
+    }
   
     await wait(60000);
     
-    await bestbuy.close();
+    retailers.forEach(async retailer => await retailer.close());
 
     return true;
   } catch (error) {
     console.log(error);
-
-    await bestbuy.close();
 
     throw error;
   }

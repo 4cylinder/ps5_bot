@@ -1,5 +1,5 @@
 dist
 node_modules
 screenshots
-config/prod
+config
 logs.log
