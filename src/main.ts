@@ -5,7 +5,6 @@ import { WalMart } from '@pages/walmart';
 import { getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
-import { sendMessage as sendDiscordMessage } from '@core/notifications/discord';
 import pm2 from 'pm2';
 
 const main = async () => {
@@ -43,10 +42,8 @@ const main = async () => {
   
     logger.info('Shutting down in 1 minute');
 
-    for (let retailerName in stores) {
-      await Promise.all([
-        await sendDiscordMessage({ key: retailerName, message: 'Shutting down in 1 minute' }),
-      ]);
+    for (let retailer of retailers) {
+      await retailer.sendText('Shutting down in 1 minute');
     }
   
     await wait(60000);

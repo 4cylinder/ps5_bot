@@ -237,7 +237,7 @@ export class BestBuy extends Retailer {
     await page.click('.continue-to-payment');
 
     await this.enterPaymentInfo(paymentInformation);
-    await this.sendScreenshot(page, `${Date.now()}_second-information-page-completed.png`, 'Filled out payment info.');
+    await this.sendText('Filled out payment info.');
 
     await page.click('.continue-to-review');
 
@@ -288,9 +288,12 @@ export class BestBuy extends Retailer {
     logger.info('Filling shipping information...');
     await this.fillTextInput(page, '#firstName', customerInformation.firstName);
     await this.fillTextInput(page, '#lastName', customerInformation.lastName);
-    // Add a space in case the Canada Post address-filler lags
-    await page.type('#addressLine', customerInformation.address + ' ');
-    await page.keyboard.press('\n');
+
+
+    await page.type('#addressLine', customerInformation.address);
+    // Countering an update to the Canada Post API
+    await page.click('#email');
+
     await this.fillTextInput(page, '#city', customerInformation.city);
     await page.selectOption('#regionCode', customerInformation.province);
     await this.fillTextInput(page, '#postalCode', customerInformation.postalCode);

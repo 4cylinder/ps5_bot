@@ -63,7 +63,7 @@ export abstract class Retailer {
     await page.type(selector, value);
   }
 
-  protected async sendText(message: string) {
+  public async sendText(message: string) {
     await Promise.all([
       // sendDiscordMessage({ key: this.retailerName, message: message })
     ]);
