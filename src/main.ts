@@ -15,7 +15,7 @@ const main = async () => {
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
-    // new BestBuy({ products: bestbuyConfig.products }),
+    new BestBuy({ products: bestbuyConfig.products }),
     new WalMart({ products: walmartConfig.products }),
   ];
 
