@@ -1,5 +1,6 @@
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
+import { orderBy } from 'lodash';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface WalmartProduct extends Product {
@@ -84,7 +85,7 @@ export class WalMart extends Retailer {
 
     logger.info(`${productTitle} is in stock, adding to cart...`);
 
-    await page.click(addToCartBtnSelector);
+    await page.click(addToCartBtnSelector, { timeout: 30000 });
 
     const canCheckout = await this.isInCart();
 
@@ -159,13 +160,20 @@ export class WalMart extends Retailer {
     await this.enterPaymentInfo(getPaymentInformation());
     await this.sendText('Payment info filled out');
 
-    // TODO: Figure out how to extract the displayed order total
-    // await this.validateOrderTotal(page, customerInfo.budget);
-
     await checkAlreadyPurchased();
 
+    // TODO: Figure out how to extract the displayed order total
+    await this.validateOrderTotal(customerInfo.budget);
+
     /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    await this.placeOrder(page, 'button[data-automation="place-order-button"]');
+    await page.$eval(
+      'button[data-automation="place-order-button"]',
+      (elem) => {
+        const element = elem as HTMLElement;
+        element.setAttribute('style', 'visibility:visible');
+        element.click();
+      }
+    );
     await wait(5000);
     await this.markAsPurchased();
     await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
@@ -177,7 +185,11 @@ export class WalMart extends Retailer {
     const page = await this.getPage();
     await this.fillTextInput(page, '#firstName', customerInfo.firstName);
     await this.fillTextInput(page, '#lastName', customerInfo.lastName);
-    await this.fillTextInput(page, '#address1', customerInfo.address);
+    
+    // Countering an update to the Canada Post API
+    await page.type('#address1', customerInfo.address);
+    await page.click('#postalCode');
+
     if (customerInfo.addressSecondLine) {
       await this.fillTextInput(page, '#address2', customerInfo.addressSecondLine)
     }
@@ -189,6 +201,15 @@ export class WalMart extends Retailer {
 
     // Blue "Next" button after filling customer info
     await page.click('button[data-automation="btn-save"]');
+
+    // Walmart probably will still suggest a replacement
+    const needToReplace = await page.waitForSelector(`div[data-automation="replace-address-text"]`, {timeout: 1000});
+    if (needToReplace) {
+      // click radio button that says "Replace Address"
+      await page.check('input[data-automation="replace-address-radio"]');
+      // click another blue "Next" button
+      await page.click('button[data-automation="btn-save"]');
+    }
     
     logger.info('Shipping information filled');
   }
@@ -207,13 +228,15 @@ export class WalMart extends Retailer {
     // Blue "Apply" button at the bottom of the payment section
     await page.click('button[data-automation="apply-button"]');
 
+    await page.waitForSelector(`#payment-${paymentInfo.creditCardNumber.substr(12)}`, {timeout: 2000});
+
     logger.info('Payment information completed');
   }
 
   async validateOrderTotal(budget: number) {
     const page = await this.getPage();
     const orderTotalText = await page.$eval(
-      'div[data-automation="payment-method"] div:nth-of-type(2)',
+      'div[data-automation="order-total"] div:nth-of-type(2)',
       (element) => element.textContent
     );
     const orderTotal = orderTotalText ? parseFloat(orderTotalText.replace(/[^0-9.,]/g, '')) : 0;

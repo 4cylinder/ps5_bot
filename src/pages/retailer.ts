@@ -65,7 +65,7 @@ export abstract class Retailer {
 
   public async sendText(message: string) {
     await Promise.all([
-      // sendDiscordMessage({ key: this.retailerName, message: message })
+      sendDiscordMessage({ key: this.retailerName, message: message })
     ]);
   }
 
@@ -77,7 +77,7 @@ export abstract class Retailer {
       fullPage: fullPage
     });
     await Promise.all([
-      // sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
+      sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
     ]);
   }
 
@@ -90,7 +90,8 @@ export abstract class Retailer {
     return this.page!;
   }
 
-  protected async placeOrder(page: Page, buttonSelector: string) {
+  protected async placeOrder(pg: Page, buttonSelector: string) {
+    const page = await this.getPage();
     await page.click(buttonSelector, {timeout: 120000, force: true});
   }
 
