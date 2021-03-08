@@ -21,12 +21,13 @@ const main = async () => {
 
   let purchaseCompleted = false;
 
+  retailers.forEach(async retailer => await retailer.open());
+
   logger.info('Starting purchase attempts');
 
   try {
     do {
       for (let retailer of retailers) {
-        await retailer.open();
         const retailerStatus = await retailer.purchaseProduct();
         purchaseCompleted = purchaseCompleted || retailerStatus;
       }
