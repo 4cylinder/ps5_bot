@@ -21,17 +21,17 @@ const main = async () => {
 
   let purchaseCompleted = false;
 
-  
+  for (let retailer of retailers) {
+    await retailer.open();
+  }
 
   logger.info('Starting purchase attempts');
 
   try {
     do {
       for (let retailer of retailers) {
-        await retailer.open();
         const retailerStatus = await retailer.purchaseProduct();
         purchaseCompleted = purchaseCompleted || retailerStatus;
-        await retailer.close();
       }
   
       if (!purchaseCompleted) {
@@ -47,11 +47,10 @@ const main = async () => {
 
     for (let retailer of retailers) {
       await retailer.sendText('Shutting down in 1 minute');
+      await retailer.close();
     }
   
     await wait(60000);
-    
-    
 
     return true;
   } catch (error) {
