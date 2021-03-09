@@ -1,0 +1,59 @@
+#MainPart_divTimeBox.time-box h2 {
+	display: none;
+}
+
+#MainPart_divTimeBox.time-box {
+	margin: 40px 0 0 0;
+	background: white;
+    color: #1D252C;
+    border: none;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+#MainPart_divTimeBox_Holder_Frame.frame {
+    color: #1D252C;
+}
+
+#MainPart_divTimeBox.time-box h2 {
+	font-weight: bold;
+	color: #1D252C;
+}
+
+#MainPart_pMessageOnQueueTicket p {
+    font-size: 16px;
+    line-height: 24px;
+}
+
+#MainPart_pMessageOnQueueTicket p img {
+    width: 40px;
+	height: 40px;
+}
+
+#MainPart_pMessageOnQueueTicket hr {
+    margin: 32px 0;
+	border: none;
+	height: 1px;
+	color: #E0E6EF;
+	background-color: #E0E6EF;
+}
+
+#MainPart_pMessageOnQueueTicket a {
+    color: #0046be;
+    text-decoration:none;
+}
+
+#MainPart_pMessageOnQueueTicket a:hover {
+    text-decoration: underline
+}
+
+.time-box .frame {
+    padding: 0;
+}
+
+/* table & desktop only */
+@media only screen and (min-width: 601px) {
+    #MainPart_divTimeBox.time-box {
+		padding: 16px 32px;
+	}
+}

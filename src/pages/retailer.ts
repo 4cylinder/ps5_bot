@@ -101,6 +101,8 @@ export abstract class Retailer {
 
   protected abstract validateProductMatch(product: Product): Promise<void>;
 
+  protected abstract addToCart(product: Product): Promise<void>;
+
   protected abstract isInStock(): Promise<boolean>;
 
   protected abstract isInCart(): Promise<boolean>;

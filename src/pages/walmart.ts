@@ -1,6 +1,5 @@
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
-import { orderBy } from 'lodash';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface WalmartProduct extends Product {
@@ -165,17 +164,17 @@ export class WalMart extends Retailer {
     await this.validateOrderTotal(customerInfo.budget);
 
     /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    await page.$eval(
-      'button[data-automation="place-order-button"]',
-      (elem) => {
-        const element = elem as HTMLElement;
-        element.setAttribute('style', 'visibility:visible');
-        element.click();
-      }
-    );
-    await wait(5000);
-    await this.markAsPurchased();
-    await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
+    // await page.$eval(
+    //   'button[data-automation="place-order-button"]',
+    //   (elem) => {
+    //     const element = elem as HTMLElement;
+    //     element.setAttribute('style', 'visibility:visible');
+    //     element.click();
+    //   }
+    // );
+    // await wait(5000);
+    // await this.markAsPurchased();
+    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
   }
 
   async enterShippingInfo(customerInfo: CustomerInformation) {

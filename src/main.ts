@@ -2,6 +2,7 @@ import { createBrowser, getBrowser } from '@driver/index';
 import { wait, checkAlreadyPurchased, Retailer } from '@pages/retailer';
 import { BestBuy } from '@pages/bestbuy';
 import { WalMart } from '@pages/walmart';
+import { TheSource } from '@pages/thesource';
 import { getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
@@ -11,12 +12,14 @@ const main = async () => {
   const { stores } = getTasks()[0];
   const bestbuyConfig = stores.bestbuy;
   const walmartConfig = stores.walmart;
+  const theSourceConfig = stores.thesource;
 
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
     new BestBuy({ products: bestbuyConfig.products }),
     new WalMart({ products: walmartConfig.products }),
+    new TheSource({products: theSourceConfig.products }),
   ];
 
   let purchaseCompleted = false;

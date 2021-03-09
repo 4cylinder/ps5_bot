@@ -1,0 +1,352 @@
+@font-face {
+    font-family: "Human BBY";
+    src: url("https://www.bestbuy.ca/BBYHumanFontfiles/HumanBBY-55Regular-Web.eot");
+    src: url("https://www.bestbuy.ca/BBYHumanFontfiles/HumanBBY-55Regular-Web.woff2") format("woff2"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/HumanBBY-55Regular-Web.woff") format("woff"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-55Regular.ttf") format("truetype"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/HumanBBY-55Regular-Web.svg") format("svg");
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Human BBY";
+    src: url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-65-Medium.eot");
+    src: url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-65-Medium.woff2") format("woff2"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-65-Medium.woff") format("woff"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-65-Medium.ttf") format("truetype"),
+         url("https://www.bestbuy.ca/BBYHumanFontfiles/Human-BBY-Web-65-Medium.svg") format("svg");
+    font-style: normal;
+    font-display: swap;
+    font-weight: 600;
+}
+
+/*  */
+:root {
+	--content-width: 288px;
+
+	--main-c-margin: 0 auto 32px auto;
+
+	--header-event-name-margin: 8px auto 32px auto;
+	--header-event-name-font-size: 48px;
+
+	--header-h1-height: 72px;
+
+	--header-h2-font-size: 20px;
+	--header-h2-line-height: 24px;
+
+	--footer-disclaimer-padding: 0;
+}
+
+#main {
+	padding: 0;
+	width: 320px;
+	max-width: 320px;
+}
+
+#footer {
+	margin: 0px;
+}
+
+#middlepanel_iframe {
+	height: 290px;
+}
+/*  */
+
+body {
+  font-family: "Human BBY", "Open Sans", sans-serif;
+	background-color: #F4F6F9;
+	color: black;
+}
+
+/*  */
+#main .t,
+#main-top-message,
+#whatisthis,
+#MainPart_divProgressbarBox,
+#MainPart_divExitLine,
+#MainPart_divVersionInfo,
+h1.logo,
+#middlepanel,
+#footer-direct-link,
+#footer-queueit-link {
+	display: none;
+}
+
+
+#toppanel {
+	/* height: 72px; */
+	height: 120px;
+}
+
+#toppanel_iframe {
+	width: 100%;
+}
+
+#main .c {
+	width: var(--content-width);
+	margin: var(--main-c-margin);
+	padding: 0px;
+	background: none
+}
+
+#header {
+	margin-bottom: 32px;
+	padding: 0px;
+	border: none;
+	color: black;
+}
+
+#imgCustomerLogo {
+	margin-top: 17.5px;
+	max-width: 64px;
+	height: auto;
+}
+
+#header-event-name {
+	margin: var(--header-event-name-margin);
+	font-size: var(--header-event-name-font-size);
+}
+
+#header-event-name span#header-event-name-span1 {
+	color: white;
+}
+
+#header-event-name span#header-event-name-span2 {
+	color: #BB0628;
+}
+
+#header h2 {
+	margin-top: var(--header-h1-height);
+	font-size: var(--header-h2-font-size);
+	line-height: var(--header-h2-line-height);
+}
+
+#lbHeaderP {
+	font-weight: normal;
+	font-size: 16px;
+	line-height: 24px;
+}
+
+#detailExpander span {
+	color: #0046BE;
+}
+
+.warning-box {
+	background: none;
+	border: none;
+	padding: 0px;
+}
+
+#progressbar-text-div {
+	color: black;
+	margin-bottom: 10px;
+	text-align: left;
+}
+
+#progressbar-text-div .progressbar-text-span {
+	font-weight: bold;
+	font-size: 16px;
+}
+
+.progressbar {
+	height: 26px;
+	width: var(--content-width);
+	border: none;
+	border-radius: 2px;
+	background-color: #FFFFFF;
+}
+
+.progressbar .progress {
+	margin: 2px;
+	height: 22px;
+	max-width: calc(var(--content-width) - 4px);
+	border-radius: 2px;
+	background-color: #308800;
+	background-image: none;
+}
+
+.progressbar .progress.updated {
+	background-image: none;
+}
+
+.runner {
+	display: none;
+}
+
+/* #MainPart_divTimeBox.time-box h2 {
+	display: none;
+}
+
+#MainPart_divTimeBox.time-box {
+	margin: 40px 0 0 0;
+	background: white;
+    color: #1D252C;
+    border: none;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+#MainPart_divTimeBox.time-box h2 {
+	font-weight: bold;
+	color: #1D252C;
+}
+
+#MainPart_divTimeBox_Holder_Frame.frame {
+	margin: inherit;
+	padding: inherit;
+	font-size: inherit;
+	color: #1D252C;
+	min-height: inherit;
+}
+
+#MainPart_pMessageOnQueueTicket img,
+#MainPart_pMessageOnQueueTicket svg {
+	height: 40px;
+	width: 40px;
+} */
+
+
+#middlepanel_iframe {
+	width: 100%;
+}
+
+#footer {
+	height: 100px;
+	width: var(--content-width);
+	position: relative;
+	margin-top: 16px;
+	padding: 0px;
+	font-weight: normal;
+	font-size: inherit;
+	color: #55555A;
+}
+
+#footer-disclaimer {
+	display: inline-block;
+	padding: var(--footer-disclaimer-padding);
+}
+
+#SharedTexts_Languages_SelectedValue {
+	width: 200px;
+	height: 48px;
+	background-image: url('/static/QueueFront/img/select-arrow_1cdbba96b54deeba6bda499b4086a7c8.png');
+	background-size: 10px;
+}
+
+#MainPart_divWarningBox.warning-box {
+	padding-bottom: 40px;
+	border-width: 0px 0px 1px 0px;
+	border-color: #C5CBD5;
+	border-style: solid;
+}
+
+#MainPart_lbManualUpdateWarning {
+    margin: 20px 0px;
+}
+
+.alert {
+    text-shadow: none;
+    color: black;
+}
+
+#MainPart_divWarningBox.warning-box p {
+	text-align: left;
+}
+
+#MainPart_divWarningBox.warning-box .btn,
+#buttonConfirmRedirect.btn {
+	background-color: #0046BE;
+	font-size: 14px;
+	border-radius: 2px;
+	text-align: center;
+}
+
+#buttonConfirmRedirect.btn {
+    width: 100%;
+}
+
+#MainPart_divWarningBox.warning-box .btn:hover,
+#buttonConfirmRedirect.btn:hover {
+	background: inherit;
+	background-color: #001E73;
+  box-shadow: none;
+}
+
+#divConfirmRedirectModal_Content .modal-body {
+	padding: 16px;
+	border-radius: 2px;
+}
+
+#h2ConfirmRedirect {
+    margin: 0 auto 16px auto;
+}
+#pConfirmRedirect {
+	font-weight: 400;
+}
+
+#buttonConfirmRedirect {
+	width: 100%;
+}
+
+#language-selector {
+	margin-top: 20px;
+}
+
+[data-culture="fr-CA"] #middlepanel_iframe {
+	height: 326px;
+}
+
+.section.left {
+	padding-bottom: 32px;
+}
+
+/* tablet & desktop only */
+@media only screen and (min-width: 601px) {
+	:root {
+		--content-width: 596px;
+
+		--main-c-margin: 0 auto 74px auto;
+
+		--header-event-name-margin: 8px auto 46px auto;
+		--header-event-name-font-size: 56px;
+
+		--header-h1-height: 72px;
+
+		--header-h2-font-size: 32px;
+		--header-h2-line-height: 40px;
+
+		--footer-disclaimer-padding: 16px 0px;
+	}
+
+	#toppanel {
+		height: 174px;
+	}
+	
+	#main {
+		padding: 0;
+		width: 768px;
+		max-width: 768px;
+	}
+
+	#language-selector {
+		position: absolute;
+		top: 0px;
+		right: 0px;
+		margin-top: 0;
+	}
+	
+	#middlepanel_iframe {
+		height: 220px;
+	}
+
+	[data-culture="fr-CA"] #middlepanel_iframe {
+		height: 240px
+	}
+
+	.section.left {
+		padding-bottom: 0px;
+	}
+}
+

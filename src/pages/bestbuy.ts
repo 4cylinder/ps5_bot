@@ -1,7 +1,6 @@
 import { find } from 'lodash';
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
-import { sendMessage as sendDiscordMessage } from '@core/notifications/discord';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface BestBuyProduct extends Product {
@@ -85,7 +84,7 @@ export class BestBuy extends Retailer {
 
     if (sensorCookie && !sensorValidationRegex.test(sensorCookie)) {
       await Promise.all([
-        sendDiscordMessage({ message: this.antiBotMsg}),
+        this.sendText(this.antiBotMsg),
       ]);
 
       throw new Error(this.antiBotMsg);
