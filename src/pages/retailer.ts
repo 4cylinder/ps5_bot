@@ -69,7 +69,7 @@ export abstract class Retailer {
   public async sendText(message: string) {
     logger.info(message);
     await Promise.all([
-      // sendDiscordMessage({ key: this.retailerName, message: message })
+      sendDiscordMessage({ key: this.retailerName, message: message })
     ]);
   }
 
@@ -82,7 +82,7 @@ export abstract class Retailer {
       fullPage: fullPage
     });
     await Promise.all([
-      // sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
+      sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
     ]);
   }
 
