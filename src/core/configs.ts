@@ -1,6 +1,7 @@
 import Tasks from '@config/tasks.json';
 import customerInformation from '@config/customer.json';
 import paymentInformation from '@config/payment.json';
+import loginInformation from '@config/login.json';
 import notificationsInformation from '@config/notifications.json';
 
 export interface CustomerInformation {
@@ -29,6 +30,11 @@ export interface PaymentInformation {
   postalCode: string;
 }
 
+export interface LoginInformation {
+  email: string;
+  password: string;
+}
+
 export const getTasks = () => {
   return Tasks;
 };
@@ -43,4 +49,8 @@ export const getPaymentInformation = (): PaymentInformation => {
 
 export const getNotificationsInformation = (): any => {
   return notificationsInformation;
+};
+
+export const getLoginInformation = () => {
+  return loginInformation;
 };

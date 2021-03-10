@@ -1,4 +1,4 @@
-import { CustomerInformation, getCustomerInformation, getPaymentInformation, PaymentInformation } from '@core/configs';
+import { CustomerInformation, getCustomerInformation, getPaymentInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
@@ -7,7 +7,10 @@ interface TheSourceProduct extends Product {
   productName: string;
 }
 
-const baseUrl = 'https://www.thesource.ca/en-ca';
+const baseUrl = 'https://www.thesource.ca';
+const loginUrl = `${baseUrl}/en-ca/login`;
+const checkoutUrl = `${baseUrl}/en-ca/checkout/multi/delivery-mode/add`;
+const signInBtnSelector = '#sign-in';
 const productNameSelector = '.pdp-name';
 const skuSelector = '.identifier';
 const addToCartBtnSelector = '#addToCartButton';
@@ -15,35 +18,23 @@ const goToCartUrl = `${baseUrl}/cart`;
 const checkoutBtnSelector = '.doCheckoutBut';
 
 export class TheSource extends Retailer {
-  constructor({ products }: { products: TheSourceProduct[] }) {
-    super({ products });
+  constructor(products: TheSourceProduct[], loginInfo: LoginInformation) {
+    super(products, loginInfo);
     this.retailerName = 'thesource';
   }
 
-  public async purchaseProduct(): Promise<boolean> {
+  public async login() {
+    this.purchaseAsGuest = false;
     const page = await this.getPage();
-    
-    await page.goto(baseUrl);
-    for (const product of this.products as TheSourceProduct[]) {
-      try {
-        await this.goToProductPage(product);
-        await this.validateProductMatch(product);
-        await this.addToCart(product);
-        await this.checkout();
-        await this.createGuestOrder();
-        return true;
-      } catch (error) {
-        logger.error(error);
+    await page.goto(loginUrl);
+    await this.fillTextInput(page, '#j_username', this.loginInfo.email);
+    await this.fillTextInput(page, '#j_password', this.loginInfo.password);
 
-        if (error.message === 'Browser is considered a bot, aborting attempt') {
-          throw error;
-        }
-      }
-    }
-    return false;
+    await page.click(signInBtnSelector, {timeout: 20000});
+    await page.waitForEvent('load', {timeout: 5000});
   }
-  
-  async goToProductPage(product: Product): Promise<void> {
+
+  async goToProductPage(product: Product) {
     const { productPage } = product;
     const page = await this.getPage();
 
@@ -51,33 +42,23 @@ export class TheSource extends Retailer {
 
     await page.goto(`${baseUrl}${productPage}`, { timeout: 60000 });
 
-    await page.$(productNameSelector);
+    await page.waitForSelector(productNameSelector);
 
     logger.info(`Navigation completed`);
   }
 
-  async validateProductMatch(product: TheSourceProduct): Promise<void> {
-    const { productName: expectedName, sku: expectedSku } = product;
+  async validateProductMatch(product: TheSourceProduct) {
+    const { sku: expectedSku } = product;
     const page = await this.getPage();
 
-    logger.info(`Validating that page is for ${expectedName}`);
-
-    const actualName = await page.$eval(productNameSelector, (element) => element.textContent);
-
-    if (expectedName !== actualName!.trim()) {
-      throw new Error(`Product name doesn't match. Expected: ${expectedName}, Actual: ${actualName}`);
-    }
+    logger.info(`Validating that page is for ${product.productName}`);
 
     const actualSku = await page.$eval(skuSelector, (element) => element.textContent);
 
-    if (expectedSku !== actualSku!.trim()) {
-      throw new Error(`Product SKU doesn't match. Expected: ${expectedSku}, Actual: ${actualSku}`);
-    } 
-
-    logger.info('Page is correct');
+    this.compareValues('SKU', expectedSku, actualSku!);
   }
 
-  async addToCart(product: TheSourceProduct): Promise<void> {
+  async addToCart(product: TheSourceProduct) {
     const { productName } = product;
     const page = await this.getPage();
     
@@ -87,19 +68,15 @@ export class TheSource extends Retailer {
     }
 
     await page.focus(addToCartBtnSelector);
-    await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock!`);
+    await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart...`);
 
-    logger.info(`${productName} is in stock, adding to cart...`);
+    await this.clickHack(page, addToCartBtnSelector);
 
-    await page.click(addToCartBtnSelector, { timeout: 30000 });
+    const result = await this.isInCart();
 
-    const canCheckout = await this.isInCart();
-
-    if (!canCheckout) {
+    if (!result) {
       throw new Error(`Could not add ${productName} to cart. Aborting.`);
     }
-
-    logger.info(`${productName} added to cart!`);
 
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`);
   }
@@ -121,33 +98,71 @@ export class TheSource extends Retailer {
     return isCheckoutEnabled ? true : false;
   }
 
-  async checkout(retrying: boolean = false): Promise<void> {
+  async checkout() {
     const page = await this.getPage();
-    logger.info(`Navigating to cart page`);
-    await page.goto(goToCartUrl);
+    const customerInformation = getCustomerInformation();
+    const paymentInformation = getPaymentInformation();
 
-    try {
-      await page.click(checkoutBtnSelector, {timeout: 60000});
+    logger.info('Checking out');
 
-      logger.info('Checkout successful, starting order placement');
-      await this.sendScreenshot(page, `${Date.now()}_checkedout.png`, 'Checked out');
-    } catch (error) {
-      logger.warn(error);
-      logger.info('Refreshing and trying to checkout again');
+    await page.goto(checkoutUrl);
 
-      await this.sendScreenshot(page, `${Date.now()}_checkedout.png`, 'Failed to check out, trying again');
+    await this.sendScreenshot(page, `${Date.now()}_starting-checkout.png`, 'Attempting checkout.');
 
-      await this.checkout(true);
+    if (this.purchaseAsGuest) {
+      await page.waitForNavigation();
+      logger.info('Continuing as guest');
+      await page.click('#guestForm .primary-button');
+      await page.waitForNavigation();
     }
+
+    // click radio button that says "Standard Ship to my home"
+    await page.$eval(
+      '#standard',
+      (elem) => {
+        const element = elem as HTMLElement;
+        element.setAttribute('style', 'visibility:visible');
+        element.setAttribute('checked', 'checked');
+      }
+    );
+
+    // click red button that says "Continue to shipping"
+    await page.$eval(
+      '#store-button2',
+      (elem) => {
+        const element = elem as HTMLElement;
+        element.removeAttribute('disabled');
+        element.click();
+      }
+    );
+    // await this.clickHack(page, '#store-button2');
+
+    if (this.purchaseAsGuest) {
+      await this.enterShippingInfo(customerInformation);
+    }
+    
+    // Red "Review Your Order" button
+    await this.clickHack(page, 'button[aria-label="Review your order"]');
+    // Red "Continue to payment" button
+    await this.clickHack(page, 'button[aria-label="Continue to payment"]');
+    await this.enterPaymentInfo(getPaymentInformation());
+    await this.sendText('Payment info filled out');
+    
+    await this.validateOrderTotal(customerInformation.budget);
+
+    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
+    await this.clickHack(page, '#payNow');
+    await wait(5000);
+    await this.markAsPurchased();
+    await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
+    return true;
   }
 
-  async createGuestOrder(): Promise<void> {
+  async createOrder(): Promise<void> {
     const page = await this.getPage();
 
     logger.info('Continuing as guest');
     await page.click('#guestForm .primary-button');
-
-    wait(5000);
 
     // click radio button that says "Standard Ship to my home"
     await page.check('#standard', {timeout: 2000});
@@ -174,7 +189,7 @@ export class TheSource extends Retailer {
     // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
   }
 
-  async enterShippingInfo(customerInfo: CustomerInformation): Promise<void> {
+  async enterShippingInfo(customerInfo: CustomerInformation) {
     logger.info('Filling shipping information...');
 
     const page = await this.getPage();
@@ -191,12 +206,22 @@ export class TheSource extends Retailer {
     logger.info('Shipping information filled');
   }
 
-  async enterPaymentInfo(paymentInfo: PaymentInformation): Promise<void> {
+  // TODO: Figure out how to click the radio button
+  async enterPaymentInfo(paymentInfo: PaymentInformation) {
     logger.info('Filling payment information...');
 
     const page = await this.getPage();
+    await page.waitForSelector('#Pay_form_section', {timeout: 1000});
     // click radio button that says "Credit/Debit Card"
-    await page.check('#rdoCredit', {timeout: 2000});
+    await page.$eval(
+      '#rdoCredit',
+      (elem) => {
+        const element = elem as HTMLElement;
+        element.setAttribute('style', 'visibility:visible');
+        element.setAttribute('checked', 'checked');
+        element.click();
+      }
+    );
     await this.fillTextInput(page, '#card-number', paymentInfo.creditCardNumber);
     await this.fillTextInput(page, '#expiry-month', paymentInfo.expirationMonth);
     await this.fillTextInput(page, '#expiry-year', paymentInfo.expirationYear.substring(2));
@@ -205,7 +230,7 @@ export class TheSource extends Retailer {
     logger.info('Payment information completed');
   }
 
-  async validateOrderTotal(budget: number): Promise<void> {
+  async validateOrderTotal(budget: number) {
     const page = await this.getPage();
     const orderTotalText = await page.$eval(
       '.cartValueEstimatedTotal',

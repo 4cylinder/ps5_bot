@@ -3,11 +3,11 @@ import { resolve } from 'path';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { sendMessage as sendDiscordMessage } from '@core/notifications/discord';
 import { existsSync, writeFileSync } from 'fs';
-import { CustomerInformation, PaymentInformation } from '@core/configs';
+import { CustomerInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
 
 export interface Product {
-  searchText?: string;
+  productName: string;
   productPage: string;
 }
 
@@ -29,14 +29,17 @@ export abstract class Retailer {
   retailerName?: string;
   browser: Browser;
   products: Product[];
+  purchaseAsGuest: boolean = true;
+  protected loginInfo: LoginInformation;
   page?: Page;
   context?: BrowserContext;
 
   readonly antiBotMsg = 'Browser is considered a bot, aborting attempt';
 
-  constructor({ products }: { products: any[] }) {
+  constructor(products: Product[], loginInfo: LoginInformation) {
     this.browser = getBrowser();
     this.products = products;
+    this.loginInfo = loginInfo;
   }
 
   async open(): Promise<Page> {
@@ -64,12 +67,14 @@ export abstract class Retailer {
   }
 
   public async sendText(message: string) {
+    logger.info(message);
     await Promise.all([
-      sendDiscordMessage({ key: this.retailerName, message: message })
+      // sendDiscordMessage({ key: this.retailerName, message: message })
     ]);
   }
 
   protected async sendScreenshot(page: Page, path: string, message: string, fullPage: boolean = false) {
+    logger.info(message);
     const screenshotPath = resolve(`screenshots/${path}`);
     await page.screenshot({
       path: screenshotPath,
@@ -77,7 +82,7 @@ export abstract class Retailer {
       fullPage: fullPage
     });
     await Promise.all([
-      sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
+      // sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
     ]);
   }
 
@@ -90,12 +95,50 @@ export abstract class Retailer {
     return this.page!;
   }
 
-  protected async placeOrder(pg: Page, buttonSelector: string) {
-    const page = await this.getPage();
-    await page.click(buttonSelector, {timeout: 120000, force: true});
+  protected async clickHack(page: Page, selector: string) {
+    // Some websites will throw "Selector resolved to hidden"
+    await page.$eval(
+      selector,
+      (elem) => {
+        const element = elem as HTMLElement;
+        element.setAttribute('style', 'visibility:visible');
+        element.click();
+      }
+    );
   }
 
-  public abstract purchaseProduct(): Promise<boolean>;
+  protected compareValues(descriptor: string, expected: string, actual: string) {
+    if (expected !== actual.trim()) {
+      throw new Error(`${descriptor} doesn't match. Expected: ${expected}. Actual: ${actual}`);
+    }
+    logger.info(`Page matches ${descriptor} ${expected}`);
+  }
+
+  public abstract login(): Promise<void>;
+
+  public async purchaseProduct() {
+    for (const product of this.products) {
+      try {
+        await this.goToProductPage(product);
+        const inStock = await this.isInStock();
+        if (inStock) {
+          await this.validateProductMatch(product);
+          await this.addToCart(product);
+          const purchased = await this.checkout();
+          if (purchased) {
+            return true;
+          }
+        }
+      } catch (error) {
+        logger.error(error);
+
+        if (error.message === this.antiBotMsg) {
+          throw error;
+        }
+      }
+    }
+    return false;
+  }
 
   protected abstract goToProductPage(product: Product): Promise<void>;
 
@@ -107,9 +150,7 @@ export abstract class Retailer {
 
   protected abstract isInCart(): Promise<boolean>;
 
-  protected abstract checkout(retrying: boolean): Promise<void>;
-
-  protected abstract createGuestOrder(): Promise<void>;
+  protected abstract checkout(): Promise<boolean>;
 
   protected abstract enterShippingInfo(customerInfo: CustomerInformation): Promise<void>;
 

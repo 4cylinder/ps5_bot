@@ -1,0 +1,14 @@
+{
+  "bestbuy": {
+    "email": "",
+    "password": ""
+  },
+  "walmart": {
+    "email": "",
+    "password": ""
+  },
+  "thesource": {
+    "email": "",
+    "password": ""
+  }
+}

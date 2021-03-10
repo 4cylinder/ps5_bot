@@ -3,29 +3,31 @@ import { wait, checkAlreadyPurchased, Retailer } from '@pages/retailer';
 import { BestBuy } from '@pages/bestbuy';
 import { WalMart } from '@pages/walmart';
 import { TheSource } from '@pages/thesource';
-import { getTasks } from '@core/configs';
+import { getLoginInformation, getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
 import pm2 from 'pm2';
 
 const main = async () => {
-  const { stores } = getTasks()[0];
-  const bestbuyConfig = stores.bestbuy;
-  const walmartConfig = stores.walmart;
-  const theSourceConfig = stores.thesource;
+  const stores = getTasks();
+  const loginConfig = getLoginInformation();
 
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
-    new BestBuy({ products: bestbuyConfig.products }),
-    new WalMart({ products: walmartConfig.products }),
-    new TheSource({products: theSourceConfig.products }),
+    // new BestBuy(stores.bestbuy.products, loginConfig.bestbuy),
+    // new WalMart(stores.walmart.products, loginConfig.walmart),
+    new TheSource(stores.thesource.products, loginConfig.thesource),
   ];
 
   let purchaseCompleted = false;
+  const purchaseAsGuest = false;
 
   for (let retailer of retailers) {
     await retailer.open();
+    if (!purchaseAsGuest) {
+      await retailer.login();
+    }
   }
 
   logger.info('Starting purchase attempts');
@@ -45,15 +47,16 @@ const main = async () => {
         await wait(waitTime);
       }
     } while (!purchaseCompleted);
-  
-    logger.info('Shutting down in 1 minute');
 
     for (let retailer of retailers) {
       await retailer.sendText('Shutting down in 1 minute');
-      await retailer.close();
     }
   
     await wait(60000);
+
+    for (let retailer of retailers) {
+      await retailer.close();
+    }
 
     return true;
   } catch (error) {
