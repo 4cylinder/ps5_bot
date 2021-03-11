@@ -1,5 +1,6 @@
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
+import { Frame, Page } from 'playwright';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface WalmartProduct extends Product {
@@ -14,10 +15,11 @@ const productNameSelector = 'h1[data-automation="product-title"]';
 const addToCartBtnSelector = 'button[data-automation="cta-button"]:not([disabled])'
 const goToCartBtnSelector = 'button[data-automation="checkout"]'
 const checkoutBtnSelector = 'button[data-automation="checkout-btn"]';
+const captchaSelector = '.g-recaptcha';
 
 export class WalMart extends Retailer {
-  constructor(products: WalmartProduct[], loginInfo: LoginInformation) {
-    super(products, loginInfo);
+  constructor(products: WalmartProduct[], loginInfo: LoginInformation, testMode: boolean) {
+    super(products, loginInfo, testMode);
     this.retailerName = 'walmart';
   }
 
@@ -28,6 +30,8 @@ export class WalMart extends Retailer {
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
     await page.click(signInBtnSelector, {timeout: 1000});
+    // await page.waitForNavigation({timeout: 5000, url: `${baseUrl}/my-account`, waitUntil: 'networkidle'});
+    logger.info('Logged into walmart');
   }
 
   async goToProductPage(product: WalmartProduct) {
@@ -43,11 +47,11 @@ export class WalMart extends Retailer {
     logger.info(`Navigation completed`);
   }
 
-  async validateProductMatch(product: WalmartProduct) {
+  async verifyProductPage(product: WalmartProduct) {
     const { productName: expectedTitle } = product;
     const page = await this.getPage();
 
-    logger.info(`Validating that page is for ${expectedTitle}`);
+    logger.info(`Verifying that page is for ${expectedTitle}`);
 
     const actualTitle = await page.$eval(productNameSelector, (element) => element.textContent);
 
@@ -57,17 +61,28 @@ export class WalMart extends Retailer {
   async addToCart(product: WalmartProduct) {
     const { productName } = product;
     const page = await this.getPage();
+
+    // Walmart will likely redirect you to a captcha page after you click the add-to-cart button for PS5s
+    page.on('framenavigated', async (frame) => {
+      const url = frame.url();
+      if (url.includes('blocked')) {
+        const page = frame.page();
+        await this.sendScreenshot(page, `${Date.now()}_product-captcha.png`, `${this.retailerName} has a captcha active!`);
+        // give user one minute to click the captcha
+        await page.waitForNavigation({timeout: 60000});
+      }
+    });
     
     await page.focus(addToCartBtnSelector);
     await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart.`);
 
     await this.clickHack(page, addToCartBtnSelector);
+    
+    // const result = await this.isInCart();
 
-    const result = await this.isInCart();
-
-    if (!result) {
-      throw new Error(`Could not add ${productName} to cart. Aborting.`);
-    }
+    // if (!result) {
+    //   throw new Error(`Could not add ${productName} to cart. Aborting.`);
+    // }
 
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`);
   }
@@ -84,7 +99,7 @@ export class WalMart extends Retailer {
 
   async isInCart() {
     const page = await this.getPage();
-    const isCheckoutEnabled = await page.waitForSelector(`#modal-root ${goToCartBtnSelector}`, {timeout: 60000});
+    const isCheckoutEnabled = await page.waitForSelector(`#modal-root ${goToCartBtnSelector}`, {timeout: 10000});
 
     return isCheckoutEnabled ? true : false;
   }
@@ -97,7 +112,11 @@ export class WalMart extends Retailer {
 
     logger.info('Checking out');
 
-    await page.goto(checkoutUrl);
+    const url = await(page.url());
+
+    if (!url.includes('checkout')) {
+      await page.goto(checkoutUrl);
+    }
 
     if (this.purchaseAsGuest) {
       logger.info('Continuing as guest');
@@ -121,24 +140,37 @@ export class WalMart extends Retailer {
       await this.sendText('Payment info filled out');
     } else {
       // "Sign In" radio button
-      // Don't know why, but still need to sign in again if done through the bot
-      await page.check('#yes');
-      await this.fillTextInput(page, '#email', this.loginInfo.email);
-      await this.fillTextInput(page, '#password', this.loginInfo.password);
-      await this.clickHack(page, 'button[data-automation="form-default-btn"]');
+      // Don't know why, but sometimes still need to sign in again if done through the bot
+      const secondLogin = await page.evaluate(() => {
+        const elem = document.querySelector("#yes")
+        if (elem) {
+          return elem.outerHTML;
+        }
+        return undefined;
+      })
+      if (secondLogin != undefined) {
+        await page.check('#yes');
+        await this.fillTextInput(page, '#email', this.loginInfo.email);
+        await this.fillTextInput(page, '#password', this.loginInfo.password);
+        await this.clickHack(page, 'button[data-automation="form-default-btn"]');
+      }
+      // wait for all elements to be visible
+      await page.waitForLoadState('networkidle', {timeout:5000});
     }
 
-    await this.validateOrderTotal( customerInformation.budget);
-
     await this.sendScreenshot(page, `${Date.now()}_placing-order.png`, 'Placing order...');
+    await this.validateOrderTotal( customerInformation.budget);
 
     await checkAlreadyPurchased();
 
-    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    // await this.clickHack(page, '.order-now');
-    // await wait(5000);
-    // await this.markAsPurchased();
-    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
+    if (this.testMode) {
+      await this.sendText('You are running in test mode so the execution stops here');
+    } else {
+      await this.clickHack(page, '.order-now');
+      await wait(5000);
+      await this.markAsPurchased();
+      await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
+    }
     return true;
   }
 
@@ -166,7 +198,7 @@ export class WalMart extends Retailer {
     await page.click('button[data-automation="btn-save"]');
 
     // Walmart probably will still suggest a replacement
-    const needToReplace = await page.waitForSelector(`div[data-automation="replace-address-text"]`, {timeout: 1000});
+    const needToReplace = await page.waitForSelector(`div[data-automation="express-checkout-header-blurb"]`, {timeout: 5000});
     if (needToReplace) {
       // click radio button that says "Replace Address"
       await page.check('input[data-automation="replace-address-radio"]');

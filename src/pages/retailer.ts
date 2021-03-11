@@ -30,16 +30,18 @@ export abstract class Retailer {
   browser: Browser;
   products: Product[];
   purchaseAsGuest: boolean = true;
+  testMode: boolean = false;
   protected loginInfo: LoginInformation;
   page?: Page;
   context?: BrowserContext;
 
   readonly antiBotMsg = 'Browser is considered a bot, aborting attempt';
 
-  constructor(products: Product[], loginInfo: LoginInformation) {
+  constructor(products: Product[], loginInfo: LoginInformation, testMode: boolean) {
     this.browser = getBrowser();
     this.products = products;
     this.loginInfo = loginInfo;
+    this.testMode = testMode;
   }
 
   async open(): Promise<Page> {
@@ -82,7 +84,7 @@ export abstract class Retailer {
       fullPage: fullPage
     });
     await Promise.all([
-      sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
+      // sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
     ]);
   }
 
@@ -114,19 +116,19 @@ export abstract class Retailer {
     logger.info(`Page matches ${descriptor} ${expected}`);
   }
 
-  public abstract login(): Promise<void>;
-
   public async purchaseProduct() {
     for (const product of this.products) {
       try {
         await this.goToProductPage(product);
         const inStock = await this.isInStock();
         if (inStock) {
-          await this.validateProductMatch(product);
+          await this.verifyProductPage(product);
           await this.addToCart(product);
           const purchased = await this.checkout();
           if (purchased) {
             return true;
+          } else {
+            logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
           }
         }
       } catch (error) {
@@ -140,9 +142,11 @@ export abstract class Retailer {
     return false;
   }
 
+  public abstract login(): Promise<void>;
+
   protected abstract goToProductPage(product: Product): Promise<void>;
 
-  protected abstract validateProductMatch(product: Product): Promise<void>;
+  protected abstract verifyProductPage(product: Product): Promise<void>;
 
   protected abstract addToCart(product: Product): Promise<void>;
 

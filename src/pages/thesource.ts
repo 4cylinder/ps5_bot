@@ -18,8 +18,8 @@ const goToCartUrl = `${baseUrl}/cart`;
 const checkoutBtnSelector = '.doCheckoutBut';
 
 export class TheSource extends Retailer {
-  constructor(products: TheSourceProduct[], loginInfo: LoginInformation) {
-    super(products, loginInfo);
+  constructor(products: TheSourceProduct[], loginInfo: LoginInformation, testMode: boolean) {
+    super(products, loginInfo, testMode);
     this.retailerName = 'thesource';
   }
 
@@ -31,7 +31,7 @@ export class TheSource extends Retailer {
     await this.fillTextInput(page, '#j_password', this.loginInfo.password);
 
     await page.click(signInBtnSelector, {timeout: 20000});
-    await page.waitForEvent('load', {timeout: 5000});
+    logger.info('Logged into The Source');
   }
 
   async goToProductPage(product: Product) {
@@ -47,7 +47,7 @@ export class TheSource extends Retailer {
     logger.info(`Navigation completed`);
   }
 
-  async validateProductMatch(product: TheSourceProduct) {
+  async verifyProductPage(product: TheSourceProduct) {
     const { sku: expectedSku } = product;
     const page = await this.getPage();
 
@@ -93,7 +93,7 @@ export class TheSource extends Retailer {
 
   async isInCart(): Promise<boolean> {
     const page = await this.getPage();
-    const isCheckoutEnabled = await page.waitForSelector('#addToCartLayer .primary-button--big', {timeout: 300000});
+    const isCheckoutEnabled = await page.waitForSelector('#addToCartLayer .primary-button--big', {timeout: 5000});
 
     return isCheckoutEnabled ? true : false;
   }
@@ -145,7 +145,7 @@ export class TheSource extends Retailer {
     await this.clickHack(page, 'button[aria-label="Review your order"]');
     // Red "Continue to payment" button
     await this.clickHack(page, 'button[aria-label="Continue to payment"]');
-    await this.enterPaymentInfo(getPaymentInformation());
+    await this.enterPaymentInfo(paymentInformation);
     await this.sendText('Payment info filled out');
     
     await this.validateOrderTotal(customerInformation.budget);

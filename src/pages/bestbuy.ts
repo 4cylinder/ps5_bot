@@ -17,8 +17,8 @@ const addToCartBtnSelector = '.productActionWrapperNonMobile_10B89 .addToCartBut
 const productDetailsSelector = '.modelInformation_1ZG9l';
 
 export class BestBuy extends Retailer {
-  constructor(products: BestBuyProduct[], loginInfo: LoginInformation) {
-    super(products, loginInfo);
+  constructor(products: BestBuyProduct[], loginInfo: LoginInformation, testMode: boolean) {
+    super(products, loginInfo, testMode);
     this.retailerName = 'bestbuy';
   }
 
@@ -30,7 +30,7 @@ export class BestBuy extends Retailer {
     await this.fillTextInput(page, '#password', this.loginInfo.password);
 
     await page.click(signInBtnSelector, {timeout: 3000});
-    await page.waitForEvent('framenavigated', {timeout: 5000});
+    logger.info('Logged into Best Buy');
   }
 
   async goToProductPage(product: BestBuyProduct) {
@@ -46,7 +46,7 @@ export class BestBuy extends Retailer {
     logger.info(`Navigation completed`);
   }
 
-  async validateProductMatch(product: BestBuyProduct) {
+  async verifyProductPage(product: BestBuyProduct) {
     const { sku: expectedSku, model: expectedModel } = product;
     const page = await this.getPage();
 
@@ -169,11 +169,15 @@ export class BestBuy extends Retailer {
 
     await checkAlreadyPurchased();
 
-    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    // await page.click('.order-now');
-    // await wait(5000);
-    // await this.markAsPurchased();
-    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
+    if (this.testMode) {
+      await this.sendText('You are running in test mode so the execution stops here');
+    } else {
+      await page.click('.order-now');
+      await wait(5000);
+      await this.markAsPurchased();
+      await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
+    }
+
     return true;
   }
 

@@ -9,19 +9,24 @@ import { logger } from '@core/logger';
 import pm2 from 'pm2';
 
 const main = async () => {
+  // Set this to true if you want the bot to log into your account first
+  const purchaseAsGuest = false;
+  // Set this to false if you want the bot to actually buy the products. DO SO AT YOUR OWN RISK!!!
+  const testMode = true;
+
   const stores = getTasks();
   const loginConfig = getLoginInformation();
 
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
-    new BestBuy(stores.bestbuy.products, loginConfig.bestbuy),
-    new WalMart(stores.walmart.products, loginConfig.walmart),
-    new TheSource(stores.thesource.products, loginConfig.thesource),
+    new BestBuy(stores.bestbuy.products, loginConfig.bestbuy, testMode),
+    new WalMart(stores.walmart.products, loginConfig.walmart, testMode),
+    new TheSource(stores.thesource.products, loginConfig.thesource, testMode),
   ];
 
   let purchaseCompleted = false;
-  const purchaseAsGuest = false;
+  
 
   for (let retailer of retailers) {
     await retailer.open();
