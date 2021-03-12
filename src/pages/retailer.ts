@@ -138,6 +138,7 @@ export abstract class Retailer {
           throw error;
         }
       }
+      await wait(10000);
     }
     return false;
   }

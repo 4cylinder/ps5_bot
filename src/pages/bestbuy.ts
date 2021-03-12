@@ -45,7 +45,6 @@ export class BestBuy extends Retailer {
     // By looping, we can ensure the bot keeps checking the page
     do {
       try {
-        await page.waitForLoadState('networkidle', { timeout: 60000 });
         // on my slower laptop it has a tendency to resolve to hidden
         try {
           await page.waitForSelector(productDetailsSelector);

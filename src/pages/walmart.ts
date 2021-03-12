@@ -40,8 +40,8 @@ export class WalMart extends Retailer {
     logger.info(`Navigating to ${baseUrl}/en${productPage}`);
 
     await page.goto(`${baseUrl}${productPage}`, { timeout: 60000 });
-    await page.waitForLoadState('networkidle');
-    await page.$(productNameSelector);
+    await page.waitForLoadState('load');
+    await page.waitForSelector(productNameSelector, { timeout: 60000 });
 
     logger.info(`Navigation completed`);
   }
