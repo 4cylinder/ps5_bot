@@ -9,7 +9,7 @@ import { logger } from '@core/logger';
 import pm2 from 'pm2';
 
 const main = async () => {
-  // Set this to true if you want the bot to log into your account first
+  // Set this to true if you don't want the bot to log into your account first
   const purchaseAsGuest = false;
   // Set this to false if you want the bot to actually buy the products. DO SO AT YOUR OWN RISK!!!
   const testMode = true;
