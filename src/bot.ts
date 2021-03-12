@@ -1,5 +1,5 @@
 import { logger } from '@core/logger';
-import { wait, checkAlreadyPurchased, Retailer, Product } from '@pages/retailer';
+import { wait, Retailer, Product } from '@pages/retailer';
 import { BestBuy } from '@pages/bestbuy';
 import { WalMart } from '@pages/walmart';
 import { TheSource } from '@pages/thesource';

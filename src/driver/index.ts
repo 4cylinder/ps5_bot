@@ -1,14 +1,9 @@
-import { firefox, Browser, LaunchOptions } from 'playwright';
+import { chromium, Browser, LaunchOptions } from 'playwright';
 
 let browser: Browser;
 
 export const createBrowser = async (): Promise<Browser> => {
-  const options: LaunchOptions = {
-    headless: false,
-  };
-
-  browser = await firefox.launch(options);
-
+  browser = await chromium.launch({headless: false});
   return browser;
 };
 
