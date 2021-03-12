@@ -1,6 +1,6 @@
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
-import { Frame, Page } from 'playwright';
+import { Browser, Frame, Page } from 'playwright';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface WalmartProduct extends Product {
@@ -18,14 +18,15 @@ const checkoutBtnSelector = 'button[data-automation="checkout-btn"]';
 const captchaSelector = '.g-recaptcha';
 
 export class WalMart extends Retailer {
-  constructor(products: WalmartProduct[], loginInfo: LoginInformation, testMode: boolean) {
-    super(products, loginInfo, testMode);
+  constructor(loginInfo: LoginInformation, testMode: boolean) {
+    super(loginInfo, testMode);
     this.retailerName = 'walmart';
   }
 
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
+    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
@@ -35,7 +36,12 @@ export class WalMart extends Retailer {
 
   async goToProductPage(product: WalmartProduct) {
     const { productPage } = product;
-    const page = await this.getPage();
+    let page = await this.getPage();
+    await page.bringToFront();
+    page.on('framenavigated', async (frame) => {
+      console.log('Frame navigated: ' + frame.name());
+      page = await this.getPage();
+    });
 
     logger.info(`Navigating to ${baseUrl}/en${productPage}`);
 

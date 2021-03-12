@@ -7,6 +7,7 @@ import { CustomerInformation, LoginInformation, PaymentInformation } from '@core
 import { logger } from '@core/logger';
 
 export interface Product {
+  retailer: string;
   productName: string;
   productPage: string;
 }
@@ -27,38 +28,19 @@ export const checkAlreadyPurchased = () => {
 
 export abstract class Retailer {
   retailerName?: string;
-  browser: Browser;
-  products: Product[];
   purchaseAsGuest: boolean = true;
   testMode: boolean = false;
   protected loginInfo: LoginInformation;
   page?: Page;
-  context?: BrowserContext;
-
   readonly antiBotMsg = 'Browser is considered a bot, aborting attempt';
 
-  constructor(products: Product[], loginInfo: LoginInformation, testMode: boolean) {
-    this.browser = getBrowser();
-    this.products = products;
+  constructor(loginInfo: LoginInformation, testMode: boolean) {
     this.loginInfo = loginInfo;
     this.testMode = testMode;
   }
 
-  async open(): Promise<Page> {
-    this.context = await this.browser.newContext({
-      permissions: [],
-    });
-    this.page = await this.context.newPage();
-
-    return this.page;
-  }
-
-  async close(): Promise<void> {  
-    await this.page?.close();
-    await this.context?.close();
-
-    this.page = undefined;
-    this.context = undefined;
+  public async setPage(pg: Page) {
+    this.page = pg;
   }
 
   protected async fillTextInput(page: Page, selector: string, value: string) {
@@ -116,50 +98,23 @@ export abstract class Retailer {
     logger.info(`Page matches ${descriptor} ${expected}`);
   }
 
-  public async purchaseProduct() {
-    for (const product of this.products) {
-      try {
-        await this.goToProductPage(product);
-        const inStock = await this.isInStock();
-        if (inStock) {
-          await this.verifyProductPage(product);
-          await this.addToCart(product);
-          const purchased = await this.checkout();
-          if (purchased) {
-            return true;
-          } else {
-            logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
-          }
-        }
-      } catch (error) {
-        logger.error(error);
-
-        if (error.message === this.antiBotMsg) {
-          throw error;
-        }
-      }
-      await wait(10000);
-    }
-    return false;
-  }
-
   public abstract login(): Promise<void>;
 
-  protected abstract goToProductPage(product: Product): Promise<void>;
+  public abstract goToProductPage(product: Product): Promise<void>;
 
-  protected abstract verifyProductPage(product: Product): Promise<void>;
+  public abstract verifyProductPage(product: Product): Promise<void>;
 
-  protected abstract addToCart(product: Product): Promise<void>;
+  public abstract addToCart(product: Product): Promise<void>;
 
-  protected abstract isInStock(): Promise<boolean>;
+  public abstract isInStock(): Promise<boolean>;
 
-  protected abstract isInCart(): Promise<boolean>;
+  public abstract isInCart(): Promise<boolean>;
 
-  protected abstract checkout(): Promise<boolean>;
+  public abstract checkout(): Promise<boolean>;
 
-  protected abstract enterShippingInfo(customerInfo: CustomerInformation): Promise<void>;
+  public abstract enterShippingInfo(customerInfo: CustomerInformation): Promise<void>;
 
-  protected abstract enterPaymentInfo(paymentInfo: PaymentInformation): Promise<void>;
+  public abstract enterPaymentInfo(paymentInfo: PaymentInformation): Promise<void>;
 
-  protected abstract validateOrderTotal(budget: number): Promise<void>;
+  public abstract validateOrderTotal(budget: number): Promise<void>;
 }

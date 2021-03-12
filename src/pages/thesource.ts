@@ -1,5 +1,6 @@
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
+import { Browser } from 'playwright';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 
 interface TheSourceProduct extends Product {
@@ -18,14 +19,15 @@ const goToCartUrl = `${baseUrl}/cart`;
 const checkoutBtnSelector = '.doCheckoutBut';
 
 export class TheSource extends Retailer {
-  constructor(products: TheSourceProduct[], loginInfo: LoginInformation, testMode: boolean) {
-    super(products, loginInfo, testMode);
+  constructor(loginInfo: LoginInformation, testMode: boolean) {
+    super(loginInfo, testMode);
     this.retailerName = 'thesource';
   }
 
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
+    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#j_username', this.loginInfo.email);
     await this.fillTextInput(page, '#j_password', this.loginInfo.password);
@@ -37,6 +39,7 @@ export class TheSource extends Retailer {
   async goToProductPage(product: Product) {
     const { productPage } = product;
     const page = await this.getPage();
+    await page.bringToFront();
 
     logger.info(`Navigating to ${baseUrl}${productPage}`);
 

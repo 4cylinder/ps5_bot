@@ -2,6 +2,7 @@ import { find } from 'lodash';
 import { CustomerInformation, getCustomerInformation, getPaymentInformation, LoginInformation, PaymentInformation } from '@core/configs';
 import { logger } from '@core/logger';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
+import { Browser } from 'playwright';
 
 interface BestBuyProduct extends Product {
   sku: string;
@@ -17,14 +18,15 @@ const addToCartBtnSelector = '.productActionWrapperNonMobile_10B89 .addToCartBut
 const productDetailsSelector = '.modelInformation_1ZG9l';
 
 export class BestBuy extends Retailer {
-  constructor(products: BestBuyProduct[], loginInfo: LoginInformation, testMode: boolean) {
-    super(products, loginInfo, testMode);
+  constructor(loginInfo: LoginInformation, testMode: boolean) {
+    super(loginInfo, testMode);
     this.retailerName = 'bestbuy';
   }
 
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
+    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
@@ -36,6 +38,7 @@ export class BestBuy extends Retailer {
   async goToProductPage(product: BestBuyProduct) {
     const { productPage } = product;
     const page = await this.getPage();
+    await page.bringToFront();
 
     logger.info(`Navigating to ${baseUrl}/en-ca${productPage}`);
 
@@ -88,8 +91,8 @@ export class BestBuy extends Retailer {
   }
 
   private async antiAntiBot() {
-    const [context] = this.browser.contexts();
-    const cookies = await context.cookies();
+    const context = this.page?.context();
+    const cookies = await context?.cookies();
 
     const sensorCookie = find(cookies, { name: '_abck' })?.value;
     const sensorValidationRegex = /~0~/g;
@@ -105,7 +108,7 @@ export class BestBuy extends Retailer {
     const { productName } = product;
     const page = await this.getPage();
     
-    await this.antiAntiBot();
+    // await this.antiAntiBot();
 
     await page.focus(addToCartBtnSelector);
     await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart.`)

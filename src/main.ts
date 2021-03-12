@@ -1,8 +1,6 @@
 import { createBrowser, getBrowser } from '@driver/index';
 import { wait, checkAlreadyPurchased, Retailer } from '@pages/retailer';
-import { BestBuy } from '@pages/bestbuy';
-import { WalMart } from '@pages/walmart';
-import { TheSource } from '@pages/thesource';
+import { Bot } from './bot';
 import { getLoginInformation, getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
@@ -14,55 +12,39 @@ const main = async () => {
   // Set this to false if you want the bot to actually buy the products. DO SO AT YOUR OWN RISK!!!
   const testMode = true;
 
-  const stores = getTasks();
+  const products = getTasks().products;
   const loginConfig = getLoginInformation();
+  const browser = getBrowser();
 
   checkAlreadyPurchased();
 
-  const retailers: Retailer[] = [
-    new BestBuy(stores.bestbuy.products, loginConfig.bestbuy, testMode),
-    new WalMart(stores.walmart.products, loginConfig.walmart, testMode),
-    new TheSource(stores.thesource.products, loginConfig.thesource, testMode),
-  ];
-
   let purchaseCompleted = false;
   
-
-  for (let retailer of retailers) {
-    await retailer.open();
-    if (!purchaseAsGuest) {
-      await retailer.login();
-      await wait(5000);
-    }
+  const bot = new Bot(browser, loginConfig, testMode);
+  await bot.open();
+  if (!purchaseAsGuest) {
+    await bot.login();
   }
 
   logger.info('Starting purchase attempts');
 
   try {
     do {
-      for (let retailer of retailers) {
-        const retailerStatus = await retailer.purchaseProduct();
-        purchaseCompleted = purchaseCompleted || retailerStatus;
-      }
+      let status = await bot.attemptPurchases(products);
+      purchaseCompleted = purchaseCompleted || status;
   
       if (!purchaseCompleted) {
-        const waitTime = random(60000, 300000);
+        const waitTime = random(60000, 180000);
   
         logger.warn(`Purchase not completed, waiting ${waitTime / 1000} seconds before retrying`);
   
         await wait(waitTime);
       }
     } while (!purchaseCompleted);
-
-    for (let retailer of retailers) {
-      await retailer.sendText('Shutting down in 1 minute');
-    }
   
     await wait(60000);
 
-    for (let retailer of retailers) {
-      await retailer.close();
-    }
+    await bot.close();
 
     return true;
   } catch (error) {
