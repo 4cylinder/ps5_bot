@@ -30,7 +30,6 @@ export class WalMart extends Retailer {
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
     await page.click(signInBtnSelector, {timeout: 1000});
-    // await page.waitForNavigation({timeout: 5000, url: `${baseUrl}/my-account`, waitUntil: 'networkidle'});
     logger.info('Logged into walmart');
   }
 
@@ -41,7 +40,7 @@ export class WalMart extends Retailer {
     logger.info(`Navigating to ${baseUrl}/en${productPage}`);
 
     await page.goto(`${baseUrl}${productPage}`, { timeout: 60000 });
-
+    await page.waitForLoadState('networkidle');
     await page.$(productNameSelector);
 
     logger.info(`Navigation completed`);

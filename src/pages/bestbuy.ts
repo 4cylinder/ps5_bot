@@ -39,11 +39,33 @@ export class BestBuy extends Retailer {
 
     logger.info(`Navigating to ${baseUrl}/en-ca${productPage}`);
 
-    await page.goto(`${baseUrl}/en-ca${productPage}`, { timeout: 60000 });
-
-    await page.waitForSelector(productDetailsSelector);
-
-    logger.info(`Navigation completed`);
+    await page.goto(`${baseUrl}/en-ca${productPage}`);
+    let navigated: boolean = false;
+    // Back in February, the product page auto-navigated to the queue page
+    // By looping, we can ensure the bot keeps checking the page
+    do {
+      try {
+        await page.waitForLoadState('networkidle', { timeout: 60000 });
+        // on my slower laptop it has a tendency to resolve to hidden
+        try {
+          await page.waitForSelector(productDetailsSelector);
+        } catch (e) {
+          // not sure how well this compensation works...
+          await page.waitForSelector('.productName_3nyxM');
+        }
+        
+        logger.info(`Navigation completed`);
+        navigated = true;
+      } catch(err) {
+        logger.info(err);
+        const url = page.url();
+        if (!url.includes(product.sku) || url.includes('softblock') || url.includes('queue')) {
+          logger.info(`Got redirected to ${url}`);
+          await this.sendScreenshot(page, `${Date.now()}_page_redirected.png`, 'Possible queue in effect. Check your PC.');
+          await page.waitForNavigation({timeout: 600000});
+        }
+      }
+    } while (!navigated);
   }
 
   async verifyProductPage(product: BestBuyProduct) {
@@ -132,36 +154,51 @@ export class BestBuy extends Retailer {
     logger.info('Checking out');
 
     await page.goto(checkoutUrl);
-    await page.waitForEvent('framenavigated', {timeout: 1000});
+    // Hopefully, navigating directly to the checkout page via the URL should trigger the queue
+    // If not, the next TODO is to implement this do/while on the cart page...
+    let navigated = false;
+    do {
+      try {
+        if (this.purchaseAsGuest) {
+          logger.info('Continuing as guest');
+    
+          await page.waitForSelector('.checkoutPageContainer .form');
+    
+          await this.enterShippingInfo(customerInformation);
+          await this.sendScreenshot(page, `${Date.now()}_first-information-page-completed.png`, 'Filled out customer info.');
+          
+          logger.info('Continuing to payment screen...');
+    
+          try {
+            await page.click('.continue-to-payment');
+          } catch (err) {
+            await page.goto(`${checkoutUrl}/#/en-ca/payment`)
+          }
+          await this.enterPaymentInfo(paymentInformation);
+          await this.sendText('Filled out payment info.');
+    
+          try {
+            await page.click('.continue-to-review');
+          } catch (err) {
+            await page.goto(`${checkoutUrl}/#/en-ca/review`);
+          }
+        } else {
+          await this.fillTextInput(page, '#cvv', paymentInformation.cvv);
+        }
+        navigated = true;
+      } catch (error) {
+        logger.info(error);
+        const url = page.url();
+        if (!url.includes('checkout') || url.includes('softblock') || url.includes('queue')) {
+          logger.info(`Got redirected to ${url}`);
+          await this.sendScreenshot(page, `${Date.now()}_page_redirected.png`, 'Possible queue in effect. Check your PC.');
+          await page.waitForNavigation({timeout: 600000});
+        }
+      }
+
+    } while (!navigated);
     
     await this.sendScreenshot(page, `${Date.now()}_starting-checkout.png`, 'Attempting checkout.');
-
-    if (this.purchaseAsGuest) {
-      logger.info('Continuing as guest');
-
-      await page.waitForSelector('.checkoutPageContainer .form');
-
-      await this.enterShippingInfo(customerInformation);
-      await this.sendScreenshot(page, `${Date.now()}_first-information-page-completed.png`, 'Filled out customer info.');
-      
-      logger.info('Continuing to payment screen...');
-
-      try {
-        await page.click('.continue-to-payment');
-      } catch (err) {
-        await page.goto(`${checkoutUrl}/#/en-ca/payment`)
-      }
-      await this.enterPaymentInfo(paymentInformation);
-      await this.sendText('Filled out payment info.');
-
-      try {
-        await page.click('.continue-to-review');
-      } catch (err) {
-        await page.goto(`${checkoutUrl}/#/en-ca/review`);
-      }
-    } else {
-      await this.fillTextInput(page, '#cvv', paymentInformation.cvv);
-    }
 
     await this.validateOrderTotal( customerInformation.budget);
 
