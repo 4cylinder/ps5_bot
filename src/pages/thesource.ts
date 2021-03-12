@@ -41,7 +41,7 @@ export class TheSource extends Retailer {
     logger.info(`Navigating to ${baseUrl}${productPage}`);
 
     await page.goto(`${baseUrl}${productPage}`, { timeout: 60000 });
-
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(productNameSelector);
 
     logger.info(`Navigation completed`);
@@ -110,83 +110,38 @@ export class TheSource extends Retailer {
     await this.sendScreenshot(page, `${Date.now()}_starting-checkout.png`, 'Attempting checkout.');
 
     if (this.purchaseAsGuest) {
-      await page.waitForNavigation();
       logger.info('Continuing as guest');
       await page.click('#guestForm .primary-button');
       await page.waitForNavigation();
     }
 
-    // click radio button that says "Standard Ship to my home"
-    await page.$eval(
-      '#standard',
-      (elem) => {
-        const element = elem as HTMLElement;
-        element.setAttribute('style', 'visibility:visible');
-        element.setAttribute('checked', 'checked');
-      }
-    );
-
-    // click red button that says "Continue to shipping"
-    await page.$eval(
-      '#store-button2',
-      (elem) => {
-        const element = elem as HTMLElement;
-        element.removeAttribute('disabled');
-        element.click();
-      }
-    );
-    // await this.clickHack(page, '#store-button2');
-
+    await this.clickHack(page, 'input#standard');
+    await page.goto(`${baseUrl}/en-ca/checkout/multi/shipping-billing/add`);
+    
     if (this.purchaseAsGuest) {
       await this.enterShippingInfo(customerInformation);
     }
+    wait(1000);
+    await page.goto(`${baseUrl}/en-ca/checkout/multi/cartorder-summary/getcart`);
+    await page.goto(`${baseUrl}/en-ca/checkout/multi/payment-method/choose`);
     
-    // Red "Review Your Order" button
-    await this.clickHack(page, 'button[aria-label="Review your order"]');
-    // Red "Continue to payment" button
-    await this.clickHack(page, 'button[aria-label="Continue to payment"]');
     await this.enterPaymentInfo(paymentInformation);
     await this.sendText('Payment info filled out');
     
     await this.validateOrderTotal(customerInformation.budget);
 
-    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    await this.clickHack(page, '#payNow');
-    await wait(5000);
-    await this.markAsPurchased();
-    await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
-    return true;
-  }
+    await checkAlreadyPurchased();
 
-  async createOrder(): Promise<void> {
-    const page = await this.getPage();
-
-    logger.info('Continuing as guest');
-    await page.click('#guestForm .primary-button');
-
-    // click radio button that says "Standard Ship to my home"
-    await page.check('#standard', {timeout: 2000});
-
-    // click red button that says "Continue to shipping"
-    await page.click('#store-button2', {timeout: 2000});
-
-    const customerInfo = getCustomerInformation();
-    await this.enterShippingInfo(customerInfo);
-
-    // Red "Review Your Order" button
-    await page.click('.continue-checkout', {timeout: 60000});
-    // Red "Continue to payment" button
-    await page.click('.continue-checkout', {timeout: 60000});
-    await this.enterPaymentInfo(getPaymentInformation());
-    await this.sendText('Payment info filled out');
-    
-    await this.validateOrderTotal(customerInfo.budget);
-
-    /** Uncomment the lines below to enable the very last step of the ordering. DO SO AT YOUR OWN RISK **/
-    // await this.placeOrder(page, '#payNow');
-    // await wait(5000);
-    // await this.markAsPurchased();
-    // await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
+    if (this.testMode) {
+      await this.sendText('You are running in test mode so the execution stops here');
+    } else {
+      await this.clickHack(page, '#payNow');
+      await wait(5000);
+      await this.markAsPurchased();
+      await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');
+      return true;
+    }
+    return false;
   }
 
   async enterShippingInfo(customerInfo: CustomerInformation) {
@@ -213,19 +168,39 @@ export class TheSource extends Retailer {
     const page = await this.getPage();
     await page.waitForSelector('#Pay_form_section', {timeout: 1000});
     // click radio button that says "Credit/Debit Card"
-    await page.$eval(
-      '#rdoCredit',
-      (elem) => {
-        const element = elem as HTMLElement;
-        element.setAttribute('style', 'visibility:visible');
-        element.setAttribute('checked', 'checked');
-        element.click();
-      }
-    );
-    await this.fillTextInput(page, '#card-number', paymentInfo.creditCardNumber);
-    await this.fillTextInput(page, '#expiry-month', paymentInfo.expirationMonth);
-    await this.fillTextInput(page, '#expiry-year', paymentInfo.expirationYear.substring(2));
-    await this.fillTextInput(page, '#cvv', paymentInfo.cvv);
+    try {
+      await page.$eval(
+        '#rdoCredit',
+        (elem) => {
+          const element = elem as HTMLElement;
+          element.setAttribute('style', 'visibility:visible');
+          element.setAttribute('checked', 'checked');
+          element.click();
+        }
+      );
+    } catch (err) {
+      await this.clickHack(page, 'a[data-payment-option="1"]');
+    }
+
+    // IDs here are actually divs. The input fields are inside iframes within the divs.
+    // Couldn't figure out how to resolve the iframe selectors,
+    // but clicking the divs and going keystroke-by-keystroke works!
+    await page.click('#cardNumber');
+    for (let i = 0; i < paymentInfo.creditCardNumber.length; i++) {
+      await page.keyboard.press(paymentInfo.creditCardNumber[i])
+    }
+    await page.click('#expiryMonth');
+    for (let i = 0; i < 2; i++) {
+      await page.keyboard.press(paymentInfo.expirationMonth[i])
+    }
+    await page.click('#expiryYear');
+    for (let i = 2; i < 4; i++) {
+      await page.keyboard.press(paymentInfo.expirationYear[i])
+    }
+    await page.click('#cvv');
+    for (let i = 0; i < paymentInfo.cvv.length; i++) {
+      await page.keyboard.press(paymentInfo.cvv[i])
+    }
 
     logger.info('Payment information completed');
   }

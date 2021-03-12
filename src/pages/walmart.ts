@@ -64,9 +64,9 @@ export class WalMart extends Retailer {
     // Walmart will likely redirect you to a captcha page after you click the add-to-cart button for PS5s
     page.on('framenavigated', async (frame) => {
       const url = frame.url();
-      if (url.includes('blocked')) {
+      if (!url.includes(product.productId) || url.includes('blocked')) {
         const page = frame.page();
-        await this.sendScreenshot(page, `${Date.now()}_product-captcha.png`, `${this.retailerName} has a captcha active!`);
+        await this.sendScreenshot(page, `${Date.now()}_product-captcha.png`, `${this.retailerName} has a captcha active! Check your PC.`);
         // give user one minute to click the captcha
         await page.waitForNavigation({timeout: 60000});
       }
@@ -77,11 +77,11 @@ export class WalMart extends Retailer {
 
     await this.clickHack(page, addToCartBtnSelector);
     
-    // const result = await this.isInCart();
+    const result = await this.isInCart();
 
-    // if (!result) {
-    //   throw new Error(`Could not add ${productName} to cart. Aborting.`);
-    // }
+    if (!result) {
+      throw new Error(`Could not add ${productName} to cart. Aborting.`);
+    }
 
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`);
   }

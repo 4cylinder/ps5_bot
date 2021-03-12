@@ -84,7 +84,7 @@ export abstract class Retailer {
       fullPage: fullPage
     });
     await Promise.all([
-      // sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
+      sendDiscordMessage({ key: this.retailerName, message: message, image: screenshotPath }),
     ]);
   }
 

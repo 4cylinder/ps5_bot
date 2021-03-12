@@ -32,6 +32,7 @@ const main = async () => {
     await retailer.open();
     if (!purchaseAsGuest) {
       await retailer.login();
+      await wait(5000);
     }
   }
 
