@@ -27,19 +27,18 @@ export class TheSource extends Retailer {
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
-    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#j_username', this.loginInfo.email);
     await this.fillTextInput(page, '#j_password', this.loginInfo.password);
 
     await page.click(signInBtnSelector, {timeout: 20000});
+    // await page.waitForNavigation();
     logger.info('Logged into The Source');
   }
 
   async goToProductPage(product: Product) {
     const { productPage } = product;
     const page = await this.getPage();
-    await page.bringToFront();
 
     logger.info(`Navigating to ${baseUrl}${productPage}`);
 

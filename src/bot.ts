@@ -29,8 +29,8 @@ export class Bot {
       viewport: { width: 1920, height: 1080 },
       ignoreHTTPSErrors: true,
     });
+    const newPage = await this.context.newPage();
     for (let key in this.retailers) {
-      const newPage = await this.context.newPage();
       await this.retailers[key].setPage(newPage);
     }
     return this.context;

@@ -26,22 +26,17 @@ export class WalMart extends Retailer {
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
-    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
-    await page.click(signInBtnSelector, {timeout: 1000});
+    await page.click(signInBtnSelector, {timeout: 3000});
+    await page.waitForNavigation();
     logger.info('Logged into walmart');
   }
 
   async goToProductPage(product: WalmartProduct) {
     const { productPage } = product;
     let page = await this.getPage();
-    await page.bringToFront();
-    page.on('framenavigated', async (frame) => {
-      console.log('Frame navigated: ' + frame.name());
-      page = await this.getPage();
-    });
 
     logger.info(`Navigating to ${baseUrl}/en${productPage}`);
 

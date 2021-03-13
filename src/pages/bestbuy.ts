@@ -3,6 +3,7 @@ import { CustomerInformation, getCustomerInformation, getPaymentInformation, Log
 import { logger } from '@core/logger';
 import { Product, Retailer, wait, checkAlreadyPurchased } from './retailer';
 import { Browser } from 'playwright';
+import { runInThisContext } from 'vm';
 
 interface BestBuyProduct extends Product {
   sku: string;
@@ -26,19 +27,28 @@ export class BestBuy extends Retailer {
   public async login() {
     this.purchaseAsGuest = false;
     const page = await this.getPage();
-    await page.bringToFront();
     await page.goto(loginUrl);
     await this.fillTextInput(page, '#username', this.loginInfo.email);
     await this.fillTextInput(page, '#password', this.loginInfo.password);
 
     await page.click(signInBtnSelector, {timeout: 3000});
+    try {
+      const captcha = await page.waitForSelector('iframe');
+      if (captcha) {
+        await this.sendScreenshot(page, `${Date.now()}_logincaptcha.png`, 'Captcha at login page');
+      }
+    } catch (err) {
+
+    }
+    
+    await page.waitForNavigation({timeout: 120000});
+    
     logger.info('Logged into Best Buy');
   }
 
   async goToProductPage(product: BestBuyProduct) {
     const { productPage } = product;
     const page = await this.getPage();
-    await page.bringToFront();
 
     logger.info(`Navigating to ${baseUrl}/en-ca${productPage}`);
 
