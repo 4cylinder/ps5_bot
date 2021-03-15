@@ -25,6 +25,7 @@ export class WalMart extends Retailer {
       loginPassword: '#password',
       signInBtn: 'button[data-automation="form-btn"]',
       addToCartBtn: 'button[data-automation="checkout"]',
+      placeOrderBtn: 'button[data-automation="place-order-button"]',
       productDetail: 'h1[data-automation="product-title"]',
       captcha: '.g-recaptcha'
     }
@@ -154,7 +155,7 @@ export class WalMart extends Retailer {
     if (this.testMode) {
       await this.sendText('You are running in test mode so the execution stops here');
     } else {
-      await this.clickHack(page, 'button[data-automation="place-order-button"]',);
+      await this.clickHack(page, this.selectors.placeOrderBtn);
       await wait(5000);
       await this.markAsPurchased();
       await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')

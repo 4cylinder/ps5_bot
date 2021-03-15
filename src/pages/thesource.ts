@@ -25,6 +25,7 @@ export class TheSource extends Retailer {
       loginPassword: '#j_password',
       signInBtn: '#sign-in',
       addToCartBtn: '#addToCartButton',
+      placeOrderBtn: '#payNow',
       productDetail: '.pdp-name'
     }
   }
@@ -118,7 +119,7 @@ export class TheSource extends Retailer {
     if (this.testMode) {
       await this.sendText('You are running in test mode so the execution stops here');
     } else {
-      await this.clickHack(page, '#payNow');
+      await this.clickHack(page, this.selectors.placeOrderBtn);
       await wait(5000);
       await this.markAsPurchased();
       await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order Placed!');

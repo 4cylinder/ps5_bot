@@ -25,6 +25,7 @@ export interface PageSelectors {
   signInBtn: string;
   productDetail: string;
   addToCartBtn: string;
+  placeOrderBtn: string;
   captcha?: string;
 }
 

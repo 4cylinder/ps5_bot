@@ -25,7 +25,8 @@ export class BestBuy extends Retailer {
       loginPassword: '#password',
       signInBtn: '.signin-form-button',
       addToCartBtn: '.productActionWrapperNonMobile_10B89 .addToCartButton:not([disabled])',
-      productDetail: '.modelInformation_1ZG9l'
+      productDetail: '.modelInformation_1ZG9l',
+      placeOrderBtn: '.order-now'
     }
   }
 
@@ -193,7 +194,7 @@ export class BestBuy extends Retailer {
     if (this.testMode) {
       await this.sendText('You are running in test mode so the execution stops here');
     } else {
-      await page.click('.order-now');
+      await page.click(this.selectors.placeOrderBtn);
       await wait(5000);
       await this.markAsPurchased();
       await this.sendScreenshot(page, `${Date.now()}_order-placed.png`, 'Order placed!')
