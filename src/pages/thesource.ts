@@ -7,44 +7,37 @@ interface TheSourceProduct extends Product {
   productName: string;
 }
 
-const baseUrl = 'https://www.thesource.ca';
-const loginUrl = `${baseUrl}/en-ca/login`;
-const checkoutUrl = `${baseUrl}/en-ca/checkout/multi/delivery-mode/add`;
-const signInBtnSelector = '#sign-in';
-const productNameSelector = '.pdp-name';
 const skuSelector = '.identifier';
-const addToCartBtnSelector = '#addToCartButton';
-const goToCartUrl = `${baseUrl}/cart`;
-const checkoutBtnSelector = '.doCheckoutBut';
 
 export class TheSource extends Retailer {
   constructor(products: TheSourceProduct[], loginInfo: LoginInformation, testMode: boolean) {
     super(products, loginInfo, testMode);
     this.retailerName = 'thesource';
-  }
-
-  public async login() {
-    this.purchaseAsGuest = false;
-    const page = await this.getPage();
-    await page.goto(loginUrl);
-    await this.fillTextInput(page, '#j_username', this.loginInfo.email);
-    await this.fillTextInput(page, '#j_password', this.loginInfo.password);
-
-    await page.click(signInBtnSelector, {timeout: 20000});
-    logger.info('Logged into The Source');
+    const baseUrl = `https://www.${this.retailerName}.ca`;
+    this.urls = {
+      base: baseUrl,
+      account: `${baseUrl}/en-ca/login`,
+      cart: `${baseUrl}/cart`,
+      checkout: `${baseUrl}/en-ca/checkout/multi/delivery-mode/add`
+    }
+    this.selectors = {
+      loginUsername: '#j_username',
+      loginPassword: '#j_password',
+      signInBtn: '#sign-in',
+      addToCartBtn: '#addToCartButton',
+      productDetail: '.pdp-name'
+    }
   }
 
   async goToProductPage(product: Product) {
     const { productPage } = product;
     const page = await this.getPage();
+    const productPageUrl = `${this.urls.base}${productPage}`;
+    logger.info(`Navigating to ${productPageUrl}`);
 
-    logger.info(`Navigating to ${baseUrl}${productPage}`);
-
-    await page.goto(`${baseUrl}${productPage}`, { timeout: 60000 });
+    await page.goto(productPageUrl, { timeout: 60000 });
     await page.waitForLoadState('networkidle');
-    await page.waitForSelector(productNameSelector);
-
-    logger.info(`Navigation completed`);
+    await page.waitForSelector(this.selectors.productDetail);
   }
 
   async verifyProductPage(product: TheSourceProduct) {
@@ -67,10 +60,10 @@ export class TheSource extends Retailer {
       throw new Error('Product not in stock, aborting attempt');
     }
 
-    await page.focus(addToCartBtnSelector);
+    await page.focus(this.selectors.addToCartBtn);
     await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart...`);
 
-    await this.clickHack(page, addToCartBtnSelector);
+    await this.clickHack(page, this.selectors.addToCartBtn);
 
     const result = await this.isInCart();
 
@@ -79,16 +72,6 @@ export class TheSource extends Retailer {
     }
 
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`);
-  }
-
-  async isInStock(): Promise<boolean> {
-    const page = await this.getPage();
-    const isButtonEnabled = await page.$(addToCartBtnSelector);
-
-    if (isButtonEnabled) {
-      return true;
-    }
-    return false;
   }
 
   async isInCart(): Promise<boolean> {
@@ -105,7 +88,7 @@ export class TheSource extends Retailer {
 
     logger.info('Checking out');
 
-    await page.goto(checkoutUrl);
+    await page.goto(this.urls.checkout);
 
     await this.sendScreenshot(page, `${Date.now()}_starting-checkout.png`, 'Attempting checkout.');
 
@@ -116,14 +99,14 @@ export class TheSource extends Retailer {
     }
 
     await this.clickHack(page, 'input#standard');
-    await page.goto(`${baseUrl}/en-ca/checkout/multi/shipping-billing/add`);
+    await page.goto(`${this.urls.base}/en-ca/checkout/multi/shipping-billing/add`);
     
     if (this.purchaseAsGuest) {
       await this.enterShippingInfo(customerInformation);
     }
     wait(1000);
-    await page.goto(`${baseUrl}/en-ca/checkout/multi/cartorder-summary/getcart`);
-    await page.goto(`${baseUrl}/en-ca/checkout/multi/payment-method/choose`);
+    await page.goto(`${this.urls.base}/en-ca/checkout/multi/cartorder-summary/getcart`);
+    await page.goto(`${this.urls.base}/en-ca/checkout/multi/payment-method/choose`);
     
     await this.enterPaymentInfo(paymentInformation);
     await this.sendText('Payment info filled out');
@@ -161,7 +144,6 @@ export class TheSource extends Retailer {
     logger.info('Shipping information filled');
   }
 
-  // TODO: Figure out how to click the radio button
   async enterPaymentInfo(paymentInfo: PaymentInformation) {
     logger.info('Filling payment information...');
 
@@ -185,22 +167,10 @@ export class TheSource extends Retailer {
     // IDs here are actually divs. The input fields are inside iframes within the divs.
     // Couldn't figure out how to resolve the iframe selectors,
     // but clicking the divs and going keystroke-by-keystroke works!
-    await page.click('#cardNumber');
-    for (let i = 0; i < paymentInfo.creditCardNumber.length; i++) {
-      await page.keyboard.press(paymentInfo.creditCardNumber[i])
-    }
-    await page.click('#expiryMonth');
-    for (let i = 0; i < 2; i++) {
-      await page.keyboard.press(paymentInfo.expirationMonth[i])
-    }
-    await page.click('#expiryYear');
-    for (let i = 2; i < 4; i++) {
-      await page.keyboard.press(paymentInfo.expirationYear[i])
-    }
-    await page.click('#cvv');
-    for (let i = 0; i < paymentInfo.cvv.length; i++) {
-      await page.keyboard.press(paymentInfo.cvv[i])
-    }
+    await this.typeHack(page, '#cardNumber', paymentInfo.creditCardNumber);
+    await this.typeHack(page, '#expiryMonth', paymentInfo.expirationMonth);
+    await this.typeHack(page, '#expiryYear', paymentInfo.expirationYear.substr(2));
+    await this.typeHack(page, '#cvv', paymentInfo.cvv);
 
     logger.info('Payment information completed');
   }

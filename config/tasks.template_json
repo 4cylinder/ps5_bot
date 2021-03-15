@@ -1,56 +1,50 @@
 {
-  "bestbuy": {
-    "products": [
-      {
-        "sku": "14962185",
-        "model": "3005720",
-        "productName": "PlayStation 5 Console - Online Only",
-        "productPage": "/product/14962185"
-      },
-      {
-        "sku": "14962184",
-        "model": "3005721",
-        "productName": "PlayStation 5 Digital Edition Console - Online Only",
-        "productPage": "/product/14962184"
-      }
-    ]
-  },
-  "walmart": {
-    "products": [
-      {
-        "productId": "6000202198562",
-        "productName": "PlayStation®5 console",
-        "productPage": "/ip/6000202198562"
-      },
-      {
-        "productId": "6000202198823",
-        "productName": "PlayStation®5 Digital Edition",
-        "productPage": "/ip/6000202198823"
-      },
-      {
-        "productId": "6000202281150",
-        "productName": "PlayStation®5 Console PLUS Marvel's Spider-Man: Miles Morales Ultimate Edition",
-        "productPage": "/ip/6000202281150"
-      },
-      {
-        "productId": "6000201790922",
-        "productName": "PlayStation 5 Console PLUS extra DualSense™ wireless controller",
-        "productPage": "/ip/6000201790922"
-      }
-    ]
-  },
-  "thesource": {
-    "products": [
-      {
-        "productName": "PlayStation®5 Digital Edition Console",
-        "sku": "108090498",
-        "productPage": "/p/108090498"
-      },
-      {
-        "productName": "PlayStation®5 Digital Edition Console Bundle",
-        "sku": "108093405",
-        "productPage": "/p/108093405"
-      }
-    ]
-  }
+  "bestbuy": [
+    {
+      "sku": "14962185",
+      "model": "3005720",
+      "productName": "PlayStation 5 Console - Online Only",
+      "productPage": "/product/14962185"
+    },
+    {
+      "sku": "14962184",
+      "model": "3005721",
+      "productName": "PlayStation 5 Digital Edition Console - Online Only",
+      "productPage": "/product/14962184"
+    }
+  ],
+  "walmart": [
+    {
+      "productId": "6000202198562",
+      "productName": "PlayStation®5 console",
+      "productPage": "/ip/6000202198562"
+    },
+    {
+      "productId": "6000202198823",
+      "productName": "PlayStation®5 Digital Edition",
+      "productPage": "/ip/6000202198823"
+    },
+    {
+      "productId": "6000202281150",
+      "productName": "PlayStation®5 Console PLUS Marvel's Spider-Man: Miles Morales Ultimate Edition",
+      "productPage": "/ip/6000202281150"
+    },
+    {
+      "productId": "6000201790922",
+      "productName": "PlayStation 5 Console PLUS extra DualSense™ wireless controller",
+      "productPage": "/ip/6000201790922"
+    }
+  ],
+  "thesource": [
+    {
+      "productName": "PlayStation®5 Digital Edition Console",
+      "sku": "108090498",
+      "productPage": "/p/108090498"
+    },
+    {
+      "productName": "PlayStation®5 Digital Edition Console Bundle",
+      "sku": "108093405",
+      "productPage": "/p/108093405"
+    }
+  ]
 }

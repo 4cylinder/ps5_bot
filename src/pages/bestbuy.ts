@@ -8,38 +8,34 @@ interface BestBuyProduct extends Product {
   model: string;
 }
 
-const baseUrl = 'https://www.bestbuy.ca';
-const loginUrl = `${baseUrl}/account/en-ca`;
-const cartUrl = `${baseUrl}/en-ca/basket`;
-const checkoutUrl = `${baseUrl}/checkout/#/en-ca/review`;
-const signInBtnSelector = '.signin-form-button';
-const addToCartBtnSelector = '.productActionWrapperNonMobile_10B89 .addToCartButton:not([disabled])';
-const productDetailsSelector = '.modelInformation_1ZG9l';
-
 export class BestBuy extends Retailer {
   constructor(products: BestBuyProduct[], loginInfo: LoginInformation, testMode: boolean) {
     super(products, loginInfo, testMode);
     this.retailerName = 'bestbuy';
-  }
-
-  public async login() {
-    this.purchaseAsGuest = false;
-    const page = await this.getPage();
-    await page.goto(loginUrl);
-    await this.fillTextInput(page, '#username', this.loginInfo.email);
-    await this.fillTextInput(page, '#password', this.loginInfo.password);
-
-    await page.click(signInBtnSelector, {timeout: 3000});
-    logger.info('Logged into Best Buy');
+    const baseUrl = `https://www.${this.retailerName}.ca`;
+    this.urls = {
+      base: baseUrl,
+      account: `${baseUrl}/account/en-ca`,
+      cart: `${baseUrl}/en-ca/basket`,
+      checkout: `${baseUrl}/checkout/#/en-ca/delivery`,
+      queue: `queue.${this.retailerName}.ca`
+    }
+    this.selectors = {
+      loginUsername: '#username',
+      loginPassword: '#password',
+      signInBtn: '.signin-form-button',
+      addToCartBtn: '.productActionWrapperNonMobile_10B89 .addToCartButton:not([disabled])',
+      productDetail: '.modelInformation_1ZG9l'
+    }
   }
 
   async goToProductPage(product: BestBuyProduct) {
     const { productPage } = product;
     const page = await this.getPage();
+    const productPageUrl = `${this.urls.base}/en-ca${productPage}`;
+    logger.info(`Navigating to ${productPageUrl}`);
 
-    logger.info(`Navigating to ${baseUrl}/en-ca${productPage}`);
-
-    await page.goto(`${baseUrl}/en-ca${productPage}`);
+    await page.goto(productPageUrl);
     let navigated: boolean = false;
     // Back in February, the product page auto-navigated to the queue page
     // By looping, we can ensure the bot keeps checking the page
@@ -47,21 +43,21 @@ export class BestBuy extends Retailer {
       try {
         // on my slower laptop it has a tendency to resolve to hidden
         try {
-          await page.waitForSelector(productDetailsSelector);
+          await page.waitForSelector(this.selectors.productDetail);
         } catch (e) {
           // not sure how well this compensation works...
-          await page.waitForSelector('.productName_3nyxM');
+          await page.waitForSelector('.breadcrumbList_16xQ3');
         }
-        
-        logger.info(`Navigation completed`);
         navigated = true;
       } catch(err) {
         logger.info(err);
         const url = page.url();
-        if (!url.includes(product.sku) || url.includes('softblock') || url.includes('queue')) {
+        if (url.includes('queue')) {
           logger.info(`Got redirected to ${url}`);
           await this.sendScreenshot(page, `${Date.now()}_page_redirected.png`, 'Possible queue in effect. Check your PC.');
           await page.waitForNavigation({timeout: 600000});
+        } else {
+          throw new Error(`Could not navigate to ${productPageUrl}`);
         }
       }
     } while (!navigated);
@@ -74,12 +70,12 @@ export class BestBuy extends Retailer {
     logger.info(`Validating that page is for ${product.productName}`);
 
     const actualModel = await page.$eval(
-      `${productDetailsSelector}:nth-of-type(1) span`,
+      `${this.selectors.productDetail}:nth-of-type(1) span`,
       (element) => element.textContent
     );
 
     const actualSku = await page.$eval(
-      `${productDetailsSelector}:nth-of-type(2) span`,
+      `${this.selectors.productDetail}:nth-of-type(2) span`,
       (element) => element.textContent
     );
 
@@ -88,16 +84,16 @@ export class BestBuy extends Retailer {
   }
 
   private async antiAntiBot() {
-    const [context] = this.browser.contexts();
+    const [context] = Retailer.browser.contexts();
     const cookies = await context.cookies();
 
     const sensorCookie = find(cookies, { name: '_abck' })?.value;
     const sensorValidationRegex = /~0~/g;
 
     if (sensorCookie && !sensorValidationRegex.test(sensorCookie)) {
-      await Promise.all([this.sendText(this.antiBotMsg)]);
+      await Promise.all([this.sendText(Retailer.antiBotMsg)]);
 
-      throw new Error(this.antiBotMsg);
+      throw new Error(Retailer.antiBotMsg);
     }
   }
 
@@ -107,10 +103,10 @@ export class BestBuy extends Retailer {
     
     await this.antiAntiBot();
 
-    await page.focus(addToCartBtnSelector);
+    await page.focus(this.selectors.addToCartBtn);
     await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart.`)
 
-    await page.click(addToCartBtnSelector);
+    await page.click(this.selectors.addToCartBtn);
 
     const result = await this.isInCart();
 
@@ -119,17 +115,6 @@ export class BestBuy extends Retailer {
     } 
 
     await this.sendScreenshot(page, `${Date.now()}_product-added.png`, `${productName} added to cart!`)
-  }
-
-  async isInStock() {
-    logger.info('Checking product stock');
-    const page = await this.getPage();
-    const isButtonEnabled = await page.$(addToCartBtnSelector);
-
-    if (isButtonEnabled) {
-      return true;
-    }
-    return false;
   }
 
   async isInCart() {
@@ -152,7 +137,7 @@ export class BestBuy extends Retailer {
 
     logger.info('Checking out');
 
-    await page.goto(checkoutUrl);
+    await page.goto(this.urls.checkout);
     // Hopefully, navigating directly to the checkout page via the URL should trigger the queue
     // If not, the next TODO is to implement this do/while on the cart page...
     let navigated = false;
@@ -171,7 +156,7 @@ export class BestBuy extends Retailer {
           try {
             await page.click('.continue-to-payment');
           } catch (err) {
-            await page.goto(`${checkoutUrl}/#/en-ca/payment`)
+            await page.goto(`${this.urls.checkout}/#/en-ca/payment`)
           }
           await this.enterPaymentInfo(paymentInformation);
           await this.sendText('Filled out payment info.');
@@ -179,7 +164,7 @@ export class BestBuy extends Retailer {
           try {
             await page.click('.continue-to-review');
           } catch (err) {
-            await page.goto(`${checkoutUrl}/#/en-ca/review`);
+            await page.goto(`${this.urls.checkout}/#/en-ca/review`);
           }
         } else {
           await this.fillTextInput(page, '#cvv', paymentInformation.cvv);
@@ -265,7 +250,6 @@ export class BestBuy extends Retailer {
     logger.info('Filling shipping information...');
     await this.fillTextInput(page, '#firstName', customerInformation.firstName);
     await this.fillTextInput(page, '#lastName', customerInformation.lastName);
-
 
     await page.type('#addressLine', customerInformation.address);
     // Countering an update to the Canada Post API

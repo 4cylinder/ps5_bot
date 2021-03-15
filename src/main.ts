@@ -14,25 +14,26 @@ const main = async () => {
   // Set this to false if you want the bot to actually buy the products. DO SO AT YOUR OWN RISK!!!
   const testMode = true;
 
-  const stores = getTasks();
+  const tasks = getTasks();
   const loginConfig = getLoginInformation();
 
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
-    new BestBuy(stores.bestbuy.products, loginConfig.bestbuy, testMode),
-    new WalMart(stores.walmart.products, loginConfig.walmart, testMode),
-    new TheSource(stores.thesource.products, loginConfig.thesource, testMode),
+    new BestBuy(tasks.bestbuy, loginConfig.bestbuy, testMode),
+    new WalMart(tasks.walmart, loginConfig.walmart, testMode),
+    new TheSource(tasks.thesource, loginConfig.thesource, testMode),
   ];
 
   let purchaseCompleted = false;
-  
 
   for (let retailer of retailers) {
     await retailer.open();
     if (!purchaseAsGuest) {
       await retailer.login();
-      await wait(5000);
+      await wait(2000);
+    } else {
+      retailer.purchaseAsGuest = true;
     }
   }
 
@@ -41,24 +42,14 @@ const main = async () => {
   try {
     do {
       for (let retailer of retailers) {
-        const retailerStatus = await retailer.purchaseProduct();
-        purchaseCompleted = purchaseCompleted || retailerStatus;
+        await retailer.purchaseProduct();
+        checkAlreadyPurchased();
       }
   
-      if (!purchaseCompleted) {
-        const waitTime = random(60000, 300000);
-  
-        logger.warn(`Purchase not completed, waiting ${waitTime / 1000} seconds before retrying`);
-  
-        await wait(waitTime);
-      }
+      const waitTime = random(30000, 120000);
+      logger.warn(`Purchase not completed, waiting ${waitTime / 1000} seconds before retrying`);
+      await wait(waitTime);
     } while (!purchaseCompleted);
-
-    for (let retailer of retailers) {
-      await retailer.sendText('Shutting down in 1 minute');
-    }
-  
-    await wait(60000);
 
     for (let retailer of retailers) {
       await retailer.close();
@@ -66,8 +57,7 @@ const main = async () => {
 
     return true;
   } catch (error) {
-    console.log(error);
-
+    logger.error(error);
     throw error;
   }
 };
@@ -81,8 +71,6 @@ pm2.connect(async (error) => {
 
   await createBrowser();
 
-  const browser = getBrowser();
-
   let finished = false;
 
   do {
@@ -91,7 +79,7 @@ pm2.connect(async (error) => {
     } catch (error) {
       logger.error(error);
 
-      if (error.message === 'Browser is considered a bot, aborting attempt') {
+      if (error.message === Retailer.antiBotMsg) {
         logger.warn('Waiting 3 minutes to refresh bot status');
 
         await wait(180000);
@@ -99,7 +87,7 @@ pm2.connect(async (error) => {
     }
   } while (!finished);
 
-  await browser.close();
+  await Retailer.browser.close();
 
   pm2.delete('main', () => {
     logger.info('Process closed');

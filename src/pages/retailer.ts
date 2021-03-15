@@ -11,6 +11,23 @@ export interface Product {
   productPage: string;
 }
 
+export interface PageLinks {
+  base: string;
+  account: string;
+  cart: string;
+  checkout: string;
+  queue?: string;
+}
+
+export interface PageSelectors {
+  loginUsername: string;
+  loginPassword: string;
+  signInBtn: string;
+  productDetail: string;
+  addToCartBtn: string;
+  captcha?: string;
+}
+
 export const wait = (ms: number) => {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -27,25 +44,27 @@ export const checkAlreadyPurchased = () => {
 
 export abstract class Retailer {
   retailerName?: string;
-  browser: Browser;
+  static browser: Browser;
   products: Product[];
-  purchaseAsGuest: boolean = true;
+  purchaseAsGuest: boolean = false;
   testMode: boolean = false;
   protected loginInfo: LoginInformation;
   page?: Page;
   context?: BrowserContext;
+  urls!: PageLinks;
+  selectors!: PageSelectors;
 
-  readonly antiBotMsg = 'Browser is considered a bot, aborting attempt';
+  static readonly antiBotMsg = 'Browser is considered a bot, aborting attempt';
 
   constructor(products: Product[], loginInfo: LoginInformation, testMode: boolean) {
-    this.browser = getBrowser();
     this.products = products;
     this.loginInfo = loginInfo;
     this.testMode = testMode;
+    Retailer.browser = getBrowser();
   }
 
   async open(): Promise<Page> {
-    this.context = await this.browser.newContext({
+    this.context = await Retailer.browser.newContext({
       permissions: [],
     });
     this.page = await this.context.newPage();
@@ -59,6 +78,16 @@ export abstract class Retailer {
 
     this.page = undefined;
     this.context = undefined;
+  }
+
+  // For typing into <input> selectors that can't be directly accessed
+  // E.g. thesource.ca encapsulates the payment inputs inside iframes
+  // The workaround is to click an encapsulating selector and then call keystrokes
+  protected async typeHack(page: Page, selector: string, value: string) {
+    await page.click(selector);
+    for (let i = 0; i < value.length; i++) {
+      await page.keyboard.press(value[i]);
+    }
   }
 
   protected async fillTextInput(page: Page, selector: string, value: string) {
@@ -127,14 +156,13 @@ export abstract class Retailer {
           const purchased = await this.checkout();
           if (purchased) {
             return true;
-          } else {
-            logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
           }
+          logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
         }
       } catch (error) {
         logger.error(error);
 
-        if (error.message === this.antiBotMsg) {
+        if (error.message === Retailer.antiBotMsg) {
           throw error;
         }
       }
@@ -143,15 +171,44 @@ export abstract class Retailer {
     return false;
   }
 
-  public abstract login(): Promise<void>;
+  public async login() {
+    this.purchaseAsGuest = false;
+    const page = await this.getPage();
+
+    await page.goto(this.urls.account);
+
+    await this.typeHack(page, this.selectors.loginUsername, this.loginInfo.email);
+    await this.typeHack(page, this.selectors.loginPassword, this.loginInfo.password);
+
+    await page.click(this.selectors.signInBtn);
+
+    // TODO: Make best buy's captcha detection more reliable
+    // try {
+    //   const captcha = await page.waitForSelector('iframe');
+    //   if (captcha) {
+    //     await this.sendScreenshot(page, `${Date.now()}_logincaptcha.png`, 'Captcha at login page');
+    //   }
+    // } catch (err) {
+
+    // }
+    logger.info(`Logged into ${this.retailerName}`);
+  }
+
+  protected async isInStock() {
+    const page = await this.getPage();
+    const isButtonEnabled = await page.$(this.selectors.addToCartBtn);
+
+    if (isButtonEnabled) {
+      return true;
+    }
+    return false;
+  }
 
   protected abstract goToProductPage(product: Product): Promise<void>;
 
   protected abstract verifyProductPage(product: Product): Promise<void>;
 
   protected abstract addToCart(product: Product): Promise<void>;
-
-  protected abstract isInStock(): Promise<boolean>;
 
   protected abstract isInCart(): Promise<boolean>;
 
