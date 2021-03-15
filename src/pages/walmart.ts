@@ -16,7 +16,7 @@ export class WalMart extends Retailer {
     const baseUrl = `https://www.${this.retailerName}.ca`;
     this.urls = {
       base: baseUrl,
-      account: `${baseUrl}/sign-in`,
+      account: `${baseUrl}/my-account`,
       cart: `${baseUrl}/cart`,
       checkout: `${baseUrl}/checkout/`
     }

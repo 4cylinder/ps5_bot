@@ -27,33 +27,40 @@ const main = async () => {
 
   let purchaseCompleted = false;
 
-  for (let retailer of retailers) {
-    await retailer.open();
-    if (!purchaseAsGuest) {
-      await retailer.login();
-      await wait(2000);
-    } else {
+  if (purchaseAsGuest) {
+    retailers.forEach(function(retailer) {
       retailer.purchaseAsGuest = true;
-    }
-  }
+    })
+  } 
 
   logger.info('Starting purchase attempts');
 
   try {
     do {
       for (let retailer of retailers) {
-        await retailer.purchaseProduct();
-        checkAlreadyPurchased();
+        await retailer.open();
       }
-  
-      const waitTime = random(30000, 120000);
-      logger.warn(`Purchase not completed, waiting ${waitTime / 1000} seconds before retrying`);
-      await wait(waitTime);
-    } while (!purchaseCompleted);
 
-    for (let retailer of retailers) {
-      await retailer.close();
-    }
+      if (!purchaseAsGuest) {
+        await Promise.all(retailers.map(function(retailer) {
+          return retailer.login();
+        }));
+      }
+
+      let statuses = await Promise.all(retailers.map(function(retailer) {
+        return retailer.purchaseProduct();
+      }));
+
+      statuses.forEach(function(status) {
+        purchaseCompleted = purchaseCompleted || status;
+      });
+
+      logger.warn(`Purchase not completed, waiting 10 minutes before retrying`);
+      for (let retailer of retailers) {
+        await retailer.close();
+      }
+      await wait(10 * 60 * 1000);
+    } while (!purchaseCompleted);
 
     return true;
   } catch (error) {

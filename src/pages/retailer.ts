@@ -158,8 +158,9 @@ export abstract class Retailer {
           if (purchased) {
             return true;
           }
-          logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
         }
+        logger.info(`${product.productName} is not in stock at ${this.retailerName}`);
+        await wait(1000);
       } catch (error) {
         logger.error(error);
 
@@ -167,7 +168,8 @@ export abstract class Retailer {
           throw error;
         }
       }
-      await wait(10000);
+      const page = await this.getPage();
+      await page.goto(this.urls.base);
     }
     return false;
   }
@@ -193,6 +195,7 @@ export abstract class Retailer {
 
     // }
     logger.info(`Logged into ${this.retailerName}`);
+    return true;
   }
 
   protected async isInStock() {
@@ -203,6 +206,19 @@ export abstract class Retailer {
       return true;
     }
     return false;
+  }
+
+  protected async validateProductPage(product: Product, details: {[key: string]: [string, string]}) {
+    const page = await this.getPage();
+
+    logger.info(`Checking that page is for ${product.productName}`);
+    for (let key in details) {
+      const actualValue = await page.$eval(
+        details[key][0],
+        (element) => element.textContent
+      );
+      this.compareValues(key, details[key][1], actualValue!);
+    }
   }
 
   protected abstract goToProductPage(product: Product): Promise<void>;

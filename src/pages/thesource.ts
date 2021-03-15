@@ -55,11 +55,6 @@ export class TheSource extends Retailer {
   async addToCart(product: TheSourceProduct) {
     const { productName } = product;
     const page = await this.getPage();
-    
-    logger.info(`Checking stock of ${productName}`);
-    if (!(await this.isInStock())) {
-      throw new Error('Product not in stock, aborting attempt');
-    }
 
     await page.focus(this.selectors.addToCartBtn);
     await this.sendScreenshot(page, `${Date.now()}_product-in-stock.png`, `${productName} is in stock! Adding to cart...`);
