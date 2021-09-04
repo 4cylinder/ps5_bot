@@ -3,6 +3,7 @@ import { wait, checkAlreadyPurchased, Retailer } from '@pages/retailer';
 import { BestBuy } from '@pages/bestbuy';
 import { WalMart } from '@pages/walmart';
 import { TheSource } from '@pages/thesource';
+import { Parks } from '@pages/parks';
 import { getLoginInformation, getTasks } from '@core/configs';
 import { random } from 'lodash';
 import { logger } from '@core/logger';
@@ -20,19 +21,19 @@ const main = async () => {
   checkAlreadyPurchased();
 
   const retailers: Retailer[] = [
-    new BestBuy(stores.bestbuy.products, loginConfig.bestbuy, testMode),
-    new WalMart(stores.walmart.products, loginConfig.walmart, testMode),
-    new TheSource(stores.thesource.products, loginConfig.thesource, testMode),
+    // new BestBuy(stores.bestbuy.products, loginConfig.bestbuy, testMode),
+    // new WalMart(stores.walmart.products, loginConfig.walmart, testMode),
+    // new TheSource(stores.thesource.products, loginConfig.thesource, testMode),
+    new Parks(stores.parks.products, loginConfig.parks, testMode)
   ];
 
   let purchaseCompleted = false;
   
-
   for (let retailer of retailers) {
     await retailer.open();
     if (!purchaseAsGuest) {
       await retailer.login();
-      await wait(5000);
+      // await wait(5000);
     }
   }
 
